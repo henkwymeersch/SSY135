@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SSY135 Lab L2 — Path Loss & Shadowing</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,0.08);
+      --card: rgba(255,255,255,0.10);
+      --stroke: rgba(255,255,255,0.14);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.70);
+      --muted2: rgba(255,255,255,0.55);
+      --accent: #7dd3fc;
+      --accent2: #a78bfa;
+      --good: #34d399;
+      --bad: #fb7185;
+      --shadow: 0 10px 24px rgba(0,0,0,0.35);
+      --shadow-lg: 0 20px 40px rgba(0,0,0,0.4);
+      --shadow-accent: 0 10px 30px rgba(125,211,252,0.15);
+      --r: 16px;
+      --r-lg: 20px;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+      color: var(--text);
+      background: 
+        radial-gradient(1200px 600px at 20% 0%, rgba(125,211,252,0.18), transparent 60%),
+        radial-gradient(1000px 700px at 100% 20%, rgba(167,139,250,0.16), transparent 60%),
+        linear-gradient(180deg, #070b14, var(--bg));
+      min-height: 100vh;
+      background-attachment: fixed;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .sub {
+      margin: 0 0 24px 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 1.1rem;
+      max-width: 800px;
+      opacity: 0.9;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 24px 0 20px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .tabbtn {
+      border-radius: 999px;
+      padding: 12px 20px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.07);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .tabbtn:hover {
+      background: rgba(255,255,255,0.12);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+
+    .tabbtn[aria-selected="true"] {
+      background: linear-gradient(135deg, rgba(125,211,252,0.22), rgba(125,211,252,0.14));
+      border-color: rgba(125,211,252,0.3);
+      box-shadow: var(--shadow-accent);
+      transform: translateY(-1px);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(125,211,252,0.14);
+      flex: 0 0 auto;
+      transition: all 0.25s ease;
+    }
+
+    .tabbtn[aria-selected="true"] .dot {
+      transform: scale(1.2);
+    }
+
+    .dot.p2 {
+      background: var(--accent2);
+      box-shadow: 0 0 0 4px rgba(167,139,250,0.14);
+    }
+
+    .dot.p3 {
+      background: var(--good);
+      box-shadow: 0 0 0 4px rgba(52,211,153,0.14);
+    }
+
+    .tabcontent {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tabcontent.active {
+      display: block;
+    }
+
+    /* Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* Panels & Cards */
+    .panel {
+      background: linear-gradient(145deg, rgba(255,255,255,0.11), rgba(255,255,255,0.07));
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--stroke);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .panel:hover {
+      box-shadow: var(--shadow-lg);
+    }
+
+    .section {
+      padding: 20px;
+    }
+
+    .section h2 {
+      margin: 0 0 16px 0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.11), rgba(255,255,255,0.07));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--r-lg);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: all 0.25s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* Stacks and Rows */
+    .stack {
+      display: grid;
+      gap: 20px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Form Elements */
+    label {
+      display: block;
+      margin-top: 16px;
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      margin: 12px 0;
+      background: linear-gradient(90deg, var(--accent) 0%, rgba(125,211,252,0.3) 100%);
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+      transition: all 0.2s ease;
+    }
+
+    input[type="range"]:hover {
+      height: 8px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 3px solid rgba(255,255,255,0.9);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 4px 15px rgba(125,211,252,0.4);
+    }
+
+    input[type="number"], select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: all 0.2s ease;
+      margin-top: 6px;
+    }
+
+    input[type="number"]:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(125,211,252,0.15);
+      background: rgba(0,0,0,0.35);
+    }
+
+    textarea {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    /* Buttons */
+    button {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.08));
+      color: var(--text);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.12));
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button.loading {
+      position: relative;
+      color: transparent;
+    }
+
+    button.loading::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Typography */
+    .mono {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+
+    .small {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .note {
+      color: var(--muted2);
+      font-size: 0.9rem;
+    }
+
+    /* KPI Pills */
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .pill {
+      background: linear-gradient(135deg, rgba(0,0,0,0.25), rgba(0,0,0,0.15));
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 16px;
+      transition: all 0.25s ease;
+    }
+
+    .pill:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,0.2);
+      background: linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.2));
+    }
+
+    .pill .label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+    }
+
+    .pill .value {
+      color: var(--text);
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    /* Dividers */
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      margin: 20px 0;
+    }
+
+    /* Canvases */
+    canvas {
+      width: 100%;
+      height: 360px;
+      border-radius: var(--r);
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.2);
+      display: block;
+    }
+
+    canvas.short {
+      height: 280px;
+    }
+
+    /* Lists */
+    ul {
+      margin: 12px 0 0 20px;
+      color: var(--muted);
+      padding-left: 0;
+    }
+
+    li {
+      margin: 8px 0;
+      line-height: 1.5;
+      position: relative;
+      padding-left: 8px;
+    }
+
+    li::before {
+      content: "•";
+      color: var(--accent);
+      position: absolute;
+      left: -12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 16px;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      .tabs {
+        justify-content: center;
+      }
+      
+      .kpi {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .kpi {
+        grid-template-columns: 1fr;
+      }
+      
+      .tabbtn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Glow effect for important elements */
+    .glow {
+      animation: glow 2s infinite alternate;
+    }
+
+    @keyframes glow {
+      from {
+        box-shadow: 0 0 5px var(--accent), 0 0 10px var(--accent);
+      }
+      to {
+        box-shadow: 0 0 10px var(--accent), 0 0 20px var(--accent);
+      }
+    }
+
+    /* Tooltip */
+    [data-tooltip] {
+      position: relative;
+    }
+
+    [data-tooltip]:hover::before {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 10px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      font-size: 12px;
+      border-radius: 6px;
+      white-space: nowrap;
+      z-index: 1000;
+      margin-bottom: 8px;
+    }
+
+    /* Status indicators */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(52,211,153,0.1);
+      color: var(--good);
+    }
+
+    .status.error {
+      background: rgba(251,113,133,0.1);
+      color: var(--bad);
+    }
+
+    /* Fade-in animation for new content */
+    .fade-in {
+      animation: fadeIn 0.5s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>SSY135 Lab L2 — Path Loss & Shadowing</h1>
+    <p class="sub">
+      Interactive lab with three tabs: (1) fit a log-distance path-loss model, (2) compute and visualize outage probability,
+      (3) generate a correlated shadowing trace.
+    </p>
+
+    <div class="tabs" role="tablist" aria-label="L2 tabs">
+      <button class="tabbtn" role="tab" aria-selected="true" aria-controls="tab-fit" id="btn-fit" data-tab="fit">
+        <span class="dot"></span> Path Loss Fitting
+      </button>
+      <button class="tabbtn" role="tab" aria-selected="false" aria-controls="tab-out" id="btn-out" data-tab="out">
+        <span class="dot p2"></span> Outage Probability
+      </button>
+      <button class="tabbtn" role="tab" aria-selected="false" aria-controls="tab-corr" id="btn-corr" data-tab="corr">
+        <span class="dot p3"></span> Correlated Shadowing
+      </button>
+    </div>
+
+    <!-- TAB 1: FIT -->
+    <div id="tab-fit" class="tabcontent active" role="tabpanel" aria-labelledby="btn-fit">
+      <div class="grid">
+        <div class="panel">
+          <div class="section">
+            <h2>Path Loss Fitting</h2>
+            
+            <div class="small note">
+              Model (in dB): <span class="mono">Pr/Pt = K − 10·γ·log10(d/d0) + Xσ</span>, where <span class="mono">Xσ ~ N(0, σ²)</span>.
+            </div>
+
+            <div class="row" style="margin-top: 20px;">
+              <button id="loadDefault">
+                <span>📊</span> Load Default Dataset
+              </button>
+              <button id="recomputeBtn">
+                <span>⚡</span> Recompute
+              </button>
+            </div>
+
+            <label>Reference distance d₀ [m]
+              <input id="d0" type="number" value="1" min="0.1" step="0.1" />
+            </label>
+
+            <label>K [dB] (intercept at d₀: Pr/Pt at d=d₀)
+              <input id="K" type="number" value="-35.8" step="0.1" />
+            </label>
+
+            <label>Fit mode
+              <select id="fitMode">
+                <option value="fitGamma" selected>Fit γ (K fixed)</option>
+                <option value="fitBoth">Fit K and γ (ordinary least squares)</option>
+              </select>
+            </label>
+
+            <label>Data (CSV: distance_m, Pr_over_Pt_dB)
+              <textarea id="dataText" rows="10" spellcheck="false" placeholder="Enter CSV data here..."></textarea>
+            </label>
+
+            <div class="kpi">
+              <div class="pill">
+                <div class="label">Estimated γ</div>
+                <div class="mono value" id="gammaHat">—</div>
+              </div>
+              <div class="pill">
+                <div class="label">Estimated K</div>
+                <div class="mono value" id="Khat">—</div>
+              </div>
+              <div class="pill">
+                <div class="label">Residual variance σ² [dB²]</div>
+                <div class="mono value" id="sig2Hat">—</div>
+              </div>
+              <div class="pill">
+                <div class="label">Residual std σ [dB]</div>
+                <div class="mono value" id="sigHat">—</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="small">
+              These fitted parameters are reused in the other tabs.
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="row">
+              <strong>Measured Path Loss vs Fitted Model</strong>
+              <span class="small note">Scatter = data, line = fitted model</span>
+            </div>
+          </div>
+          <canvas id="cvFit" width="1000" height="360"></canvas>
+
+          <div class="card">
+            <div class="row">
+              <strong>Shadowing Residuals (Histogram)</strong>
+              <span class="small note">Residuals after subtracting fitted path loss</span>
+            </div>
+          </div>
+          <canvas id="cvHist" width="1000" height="360"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: OUTAGE -->
+    <div id="tab-out" class="tabcontent" role="tabpanel" aria-labelledby="btn-out">
+      <div class="grid">
+        <div class="panel">
+          <div class="section">
+            <h2>Outage Probability</h2>
+            
+            <div class="small note">
+              Outage is <span class="mono">P(Pr(d) < Pth)</span>. With shadowing, <span class="mono">Pr(d)</span> in dB is Gaussian.
+              The shaded region in the plot equals the outage probability.
+            </div>
+
+            <label>Distance d [m] <span class="mono" id="dOutVal"></span>
+              <input id="dOut" type="range" min="1" max="300" step="1" value="100" />
+            </label>
+
+            <label>Threshold Pth [dB] for Pr/Pt <span class="mono" id="pthVal"></span>
+              <input id="pth" type="range" min="-140" max="-40" step="1" value="-110" />
+            </label>
+
+            <div class="kpi">
+              <div class="pill">
+                <div class="label">Mean Pr/Pt at d</div>
+                <div class="mono value" id="muAtD">—</div>
+              </div>
+              <div class="pill">
+                <div class="label">Outage (path loss only)</div>
+                <div class="mono value" id="outPL">—</div>
+              </div>
+              <div class="pill">
+                <div class="label">Outage (with shadowing)</div>
+                <div class="mono value" id="outSH">—</div>
+              </div>
+              <div class="pill">
+                <div class="label">z-score ( (Pth−μ)/σ )</div>
+                <div class="mono value" id="zScore">—</div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="small note">
+              If you change the dataset / fit in the "Path Loss Fitting" tab, this tab updates automatically.
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="row">
+              <strong>PDF of Pr/Pt(d) in dB with Outage Shading</strong>
+              <span class="small note">Mean and threshold shown as vertical lines</span>
+            </div>
+          </div>
+          <canvas id="cvOutage" class="short" width="1000" height="280"></canvas>
+
+          <div class="card">
+            <strong>What to Observe</strong>
+            <ul>
+              <li>Increasing σ makes the transition from "no outage" to "full outage" more gradual.</li>
+              <li>As d increases, μ decreases and outage increases rapidly once μ approaches Pth.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CORRELATED -->
+    <div id="tab-corr" class="tabcontent" role="tabpanel" aria-labelledby="btn-corr">
+      <div class="grid">
+        <div class="panel">
+          <div class="section">
+            <h2>Correlated Shadowing</h2>
+            
+            <div class="small note">
+              Generates a correlated shadowing sequence along distance using
+              <span class="mono">corr(Δd) = exp(−Δd/dcorr)</span> (Gudmundson-style). Marginal σ is taken from the fit.
+            </div>
+
+            <label>Decorrelation distance dcorr [m] <span class="mono" id="dcVal"></span>
+              <input id="dcorr" type="range" min="10" max="200" step="5" value="70" />
+            </label>
+
+            <div class="row" style="margin-top: 20px;">
+              <button id="regenCorr">
+                <span>🔄</span> Regenerate Trace
+              </button>
+              <div class="small note">Try small vs large dcorr for "rough" vs "smooth".</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="small">
+              This uses the fitted σ. Update σ by refitting in the "Path Loss Fitting" tab.
+            </div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <div class="row">
+              <strong>One Correlated Shadowing Realization</strong>
+              <span class="small note">Correlation controls smoothness (not variance)</span>
+            </div>
+          </div>
+          <canvas id="cvCorr" width="1000" height="360"></canvas>
+
+          <div class="card">
+            <strong>What to Observe</strong>
+            <ul>
+              <li>Larger dcorr makes shadowing vary more slowly with distance (longer runs above/below 0 dB).</li>
+              <li>The spread (σ) remains the same; only the "texture" changes.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------- Enhanced Math Utils --------------------
+    function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+    function mean(a) { return a.reduce((s, v) => s + v, 0) / a.length; }
+    function dot(a, b) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+    
+    function variance(a) {
+      const m = mean(a);
+      return a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length;
+    }
+    
+    function erf(x) {
+      const sign = x < 0 ? -1 : 1;
+      x = Math.abs(x);
+      const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+      const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+      const t = 1 / (1 + p * x);
+      const y = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+      return sign * y;
+    }
+    
+    function normcdf(z) { return 0.5 * (1 + erf(z / Math.SQRT2)); }
+    function normpdf(z) { return Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI); }
+    
+    function randn() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+    
+    // -------------------- Model & Fitting --------------------
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith("#"));
+      const d = [], y = [];
+      for (const ln of lines) {
+        const parts = ln.split(/[,;\s]+/).filter(Boolean);
+        if (parts.length < 2) continue;
+        const di = Number(parts[0]), yi = Number(parts[1]);
+        if (Number.isFinite(di) && Number.isFinite(yi)) {
+          d.push(di);
+          y.push(yi);
+        }
+      }
+      return { d, y };
+    }
+    
+    function pathloss_dB(d, d0, K, gamma) {
+      return K - 10 * gamma * Math.log10(d / d0);
+    }
+    
+    function fitGammaFixedK(d, y, d0, K) {
+      const x = d.map(di => Math.log10(di / d0));
+      const num = dot(x, x.map((xi, i) => (K - y[i]) * xi));
+      const den = 10 * dot(x, x);
+      const gammaHat = num / den;
+      return { Khat: K, gammaHat };
+    }
+    
+    function fitKandGamma(d, y, d0) {
+      const x = d.map(di => Math.log10(di / d0));
+      const mx = mean(x), my = mean(y);
+      let sxx = 0, sxy = 0;
+      for (let i = 0; i < x.length; i++) {
+        sxx += (x[i] - mx) * (x[i] - mx);
+        sxy += (x[i] - mx) * (y[i] - my);
+      }
+      const b = sxy / sxx;
+      const Khat = my - b * mx;
+      const gammaHat = -b / 10;
+      return { Khat, gammaHat };
+    }
+    
+    function residuals(d, y, d0, Khat, gammaHat) {
+      return d.map((di, i) => y[i] - pathloss_dB(di, d0, Khat, gammaHat));
+    }
+    
+    function defaultDataset() {
+      const d0 = 1, K = -35.8, gamma = 3.71, sig2 = 13.29;
+      const sigma = Math.sqrt(sig2);
+      
+      const d = [];
+      for (let di = 5; di <= 300; di += 10) d.push(di);
+      d.unshift(1, 2, 3);
+      
+      const x = d.map(di => Math.log10(di / d0));
+      let e = x.map(() => randn());
+      
+      const proj = dot(e, x) / dot(x, x);
+      e = e.map((ei, i) => ei - proj * x[i]);
+      
+      const eVar = variance(e);
+      const scale = sigma / Math.sqrt(eVar);
+      e = e.map(ei => ei * scale);
+      
+      const y = d.map((di, i) => pathloss_dB(di, d0, K, gamma) + e[i]);
+      
+      const lines = ["# distance_m, Pr_over_Pt_dB"];
+      for (let i = 0; i < d.length; i++) lines.push(`${d[i].toFixed(3)}, ${y[i].toFixed(3)}`);
+      return { d0, K, text: lines.join("\n") };
+    }
+    
+    // -------------------- Enhanced Plotting --------------------
+    function clearCanvas(cv) {
+      const ctx = cv.getContext("2d");
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      return ctx;
+    }
+    
+    function drawAxes(ctx, W, H, pad, xMin, xMax, yMin, yMax) {
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, 0, H);
+      gradient.addColorStop(0, 'rgba(0,0,0,0.3)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(pad, pad, W - 2 * pad, H - 2 * pad);
+      
+      // Border
+      ctx.strokeStyle = "rgba(255,255,255,0.2)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(pad, pad, W - 2 * pad, H - 2 * pad);
+      
+      // Axis labels
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.font = "13px 'SFMono-Regular', Consolas, monospace";
+      
+      // X-axis ticks
+      for (let k = 0; k <= 5; k++) {
+        const xt = xMin + (xMax - xMin) * k / 5;
+        const xpix = pad + (W - 2 * pad) * k / 5;
+        ctx.beginPath();
+        ctx.moveTo(xpix, H - pad);
+        ctx.lineTo(xpix, H - pad + 5);
+        ctx.stroke();
+        ctx.fillText(xt.toFixed(2), xpix - 14, H - pad + 20);
+      }
+      
+      // Y-axis ticks
+      for (let k = 0; k <= 5; k++) {
+        const yt = yMin + (yMax - yMin) * k / 5;
+        const ypix = H - pad - (H - 2 * pad) * k / 5;
+        ctx.beginPath();
+        ctx.moveTo(pad - 5, ypix);
+        ctx.lineTo(pad, ypix);
+        ctx.stroke();
+        ctx.fillText(yt.toFixed(1), 6, ypix + 4);
+      }
+      
+      return {
+        xMap: x => pad + (x - xMin) / (xMax - xMin) * (W - 2 * pad),
+        yMap: y => H - pad - (y - yMin) / (yMax - yMin) * (H - 2 * pad)
+      };
+    }
+    
+    function plotFit(cv, d, y, d0, Khat, gammaHat) {
+      const ctx = clearCanvas(cv);
+      const W = cv.width, H = cv.height, pad = 70;
+      
+      const x = d.map(di => Math.log10(di / d0));
+      const xMin = Math.min(...x), xMax = Math.max(...x);
+      const yMin = Math.min(...y) - 5, yMax = Math.max(...y) + 5;
+      
+      const { xMap, yMap } = drawAxes(ctx, W, H, pad, xMin, xMax, yMin, yMax);
+      
+      // Draw area under curve
+      ctx.fillStyle = "rgba(125,211,252,0.08)";
+      ctx.beginPath();
+      for (let i = 0; i <= 300; i++) {
+        const xv = xMin + (xMax - xMin) * i / 300;
+        const dv = d0 * Math.pow(10, xv);
+        const yv = pathloss_dB(dv, d0, Khat, gammaHat);
+        const xp = xMap(xv), yp = yMap(yv);
+        if (i === 0) ctx.moveTo(xp, yp);
+        else ctx.lineTo(xp, yp);
+      }
+      ctx.lineTo(xMap(xMax), yMap(yMin));
+      ctx.lineTo(xMap(xMin), yMap(yMin));
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw fitted line
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || "#7dd3fc";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i <= 300; i++) {
+        const xv = xMin + (xMax - xMin) * i / 300;
+        const dv = d0 * Math.pow(10, xv);
+        const yv = pathloss_dB(dv, d0, Khat, gammaHat);
+        const xp = xMap(xv), yp = yMap(yv);
+        if (i === 0) ctx.moveTo(xp, yp);
+        else ctx.lineTo(xp, yp);
+      }
+      ctx.stroke();
+      
+      // Draw data points with glow effect
+      ctx.shadowColor = 'rgba(125,211,252,0.5)';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      for (let i = 0; i < d.length; i++) {
+        const xp = xMap(x[i]), yp = yMap(y[i]);
+        ctx.beginPath();
+        ctx.arc(xp, yp, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      
+      // Labels
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "14px system-ui, -apple-system, sans-serif";
+      ctx.fillText("x = log₁₀(d/d₀)", W / 2 - 60, H - 15);
+      ctx.save();
+      ctx.translate(20, H / 2 + 50);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("Pr/Pt [dB]", 0, 0);
+      ctx.restore();
+    }
+    
+    function plotHistogram(cv, r) {
+      const ctx = clearCanvas(cv);
+      const W = cv.width, H = cv.height, pad = 70;
+      
+      const rMin = Math.min(...r), rMax = Math.max(...r);
+      const xMin = Math.floor(rMin - 1), xMax = Math.ceil(rMax + 1);
+      
+      const bins = 18;
+      const counts = new Array(bins).fill(0);
+      for (const v of r) {
+        const t = (v - xMin) / (xMax - xMin);
+        const b = clamp(Math.floor(t * bins), 0, bins - 1);
+        counts[b]++;
+      }
+      const maxC = Math.max(...counts);
+      
+      const { xMap, yMap } = drawAxes(ctx, W, H, pad, xMin, xMax, 0, maxC * 1.15);
+      
+      // Draw histogram bars with gradient
+      for (let b = 0; b < bins; b++) {
+        const x0 = xMin + (xMax - xMin) * b / bins;
+        const x1 = xMin + (xMax - xMin) * (b + 1) / bins;
+        const c = counts[b];
+        const xp0 = xMap(x0), xp1 = xMap(x1);
+        const yp = yMap(c);
+        
+        // Gradient for each bar
+        const gradient = ctx.createLinearGradient(0, yp, 0, H - pad);
+        gradient.addColorStop(0, 'rgba(167,139,250,0.5)');
+        gradient.addColorStop(1, 'rgba(167,139,250,0.1)');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(xp0, yp, xp1 - xp0 - 1, (H - pad) - yp);
+        
+        ctx.strokeStyle = "rgba(167,139,250,0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(xp0, yp, xp1 - xp0 - 1, (H - pad) - yp);
+      }
+      
+      // Labels
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "14px system-ui, -apple-system, sans-serif";
+      ctx.fillText("Residuals [dB]", W / 2 - 50, H - 15);
+      ctx.save();
+      ctx.translate(20, H / 2 + 70);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("Count", 0, 0);
+      ctx.restore();
+    }
+    
+    function plotOutageViz(cv, mu, sigma, pth) {
+      const ctx = clearCanvas(cv);
+      const W = cv.width, H = cv.height, pad = 65;
+      
+      const s = Math.max(1e-6, sigma);
+      const span = Math.max(6 * s, 12);
+      const xMin = Math.min(mu - span, pth - 2 * s);
+      const xMax = Math.max(mu + span, pth + 2 * s);
+      
+      let maxPdf = 0;
+      for (let i = 0; i <= 400; i++) {
+        const x = xMin + (xMax - xMin) * i / 400;
+        const z = (x - mu) / s;
+        const pdf = (1 / s) * normpdf(z);
+        maxPdf = Math.max(maxPdf, pdf);
+      }
+      
+      const { xMap, yMap } = drawAxes(ctx, W, H, pad, xMin, xMax, 0, maxPdf * 1.15);
+      
+      // Shade outage region with gradient
+      ctx.fillStyle = "rgba(251,113,133,0.15)";
+      ctx.beginPath();
+      ctx.moveTo(xMap(xMin), yMap(0));
+      const xShadeMax = Math.min(pth, xMax);
+      for (let i = 0; i <= 300; i++) {
+        const x = xMin + (xShadeMax - xMin) * i / 300;
+        const z = (x - mu) / s;
+        const pdf = (1 / s) * normpdf(z);
+        ctx.lineTo(xMap(x), yMap(pdf));
+      }
+      ctx.lineTo(xMap(xShadeMax), yMap(0));
+      ctx.closePath();
+      ctx.fill();
+      
+      // PDF curve
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i <= 500; i++) {
+        const x = xMin + (xMax - xMin) * i / 500;
+        const z = (x - mu) / s;
+        const pdf = (1 / s) * normpdf(z);
+        const xp = xMap(x), yp = yMap(pdf);
+        if (i === 0) ctx.moveTo(xp, yp);
+        else ctx.lineTo(xp, yp);
+      }
+      ctx.stroke();
+      
+      // Mean line
+      ctx.strokeStyle = "rgba(125,211,252,0.95)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(xMap(mu), yMap(0));
+      ctx.lineTo(xMap(mu), yMap(maxPdf * 1.05));
+      ctx.stroke();
+      
+      // Threshold line
+      ctx.strokeStyle = "rgba(251,113,133,0.95)";
+      ctx.beginPath();
+      ctx.moveTo(xMap(pth), yMap(0));
+      ctx.lineTo(xMap(pth), yMap(maxPdf * 1.05));
+      ctx.stroke();
+      
+      // Labels
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "13px 'SFMono-Regular', Consolas, monospace";
+      ctx.fillText("Mean μ", xMap(mu) + 8, yMap(maxPdf * 0.92));
+      ctx.fillText("Threshold Pth", xMap(pth) + 8, yMap(maxPdf * 0.82));
+      
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "14px system-ui, -apple-system, sans-serif";
+      ctx.fillText("Pr/Pt [dB]", W / 2 - 45, H - 15);
+      ctx.save();
+      ctx.translate(20, H / 2 + 45);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("PDF", 0, 0);
+      ctx.restore();
+    }
+    
+    function plotTrace(cv, d, s) {
+      const ctx = clearCanvas(cv);
+      const W = cv.width, H = cv.height, pad = 70;
+      
+      const xMin = Math.min(...d), xMax = Math.max(...d);
+      const yMin = Math.min(...s) - 2, yMax = Math.max(...s) + 2;
+      
+      const { xMap, yMap } = drawAxes(ctx, W, H, pad, xMin, xMax, yMin, yMax);
+      
+      // Draw area under curve
+      ctx.fillStyle = "rgba(52,211,153,0.08)";
+      ctx.beginPath();
+      for (let i = 0; i < d.length; i++) {
+        const xp = xMap(d[i]), yp = yMap(s[i]);
+        if (i === 0) ctx.moveTo(xp, yp);
+        else ctx.lineTo(xp, yp);
+      }
+      ctx.lineTo(xMap(xMax), yMap(yMin));
+      ctx.lineTo(xMap(xMin), yMap(yMin));
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw trace line
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--good').trim() || "#34d399";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let i = 0; i < d.length; i++) {
+        const xp = xMap(d[i]), yp = yMap(s[i]);
+        if (i === 0) ctx.moveTo(xp, yp);
+        else ctx.lineTo(xp, yp);
+      }
+      ctx.stroke();
+      
+      // Labels
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "14px system-ui, -apple-system, sans-serif";
+      ctx.fillText("Distance [m]", W / 2 - 50, H - 15);
+      ctx.save();
+      ctx.translate(20, H / 2 + 90);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText("Shadowing Xσ [dB]", 0, 0);
+      ctx.restore();
+    }
+    
+    // -------------------- Correlated Shadowing --------------------
+    function correlatedShadowing(d, sigma, dcorr) {
+      const s = new Array(d.length).fill(0);
+      s[0] = sigma * randn();
+      for (let i = 1; i < d.length; i++) {
+        const dd = d[i] - d[i - 1];
+        const a = Math.exp(-dd / dcorr);
+        const b = Math.sqrt(Math.max(0, 1 - a * a));
+        s[i] = a * s[i - 1] + b * sigma * randn();
+      }
+      return s;
+    }
+    
+    // -------------------- State & Enhanced UI --------------------
+    const el = id => document.getElementById(id);
+    
+    const cvFit = el("cvFit");
+    const cvHist = el("cvHist");
+    const cvOut = el("cvOutage");
+    const cvCorr = el("cvCorr");
+    
+    let last = { d: [], y: [], d0: 1, K: -35.8, Khat: -35.8, gammaHat: 3.71, sig2: 13.29, sigma: Math.sqrt(13.29), res: [] };
+    
+    // Enhanced loading button
+    function setLoading(button, isLoading) {
+      if (isLoading) {
+        button.classList.add('loading');
+        button.disabled = true;
+      } else {
+        button.classList.remove('loading');
+        button.disabled = false;
+      }
+    }
+    
+    // Smooth number animation
+    function animateValue(element, newValue, suffix = '', duration = 300) {
+      const oldValue = parseFloat(element.textContent) || 0;
+      const startTime = Date.now();
+      
+      function update() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const current = oldValue + (newValue - oldValue) * progress;
+        element.textContent = current.toFixed(2) + suffix;
+        
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+      
+      requestAnimationFrame(update);
+    }
+    
+    function updateOutage() {
+      const d0 = Number(el("d0").value);
+      const d = Number(el("dOut").value);
+      const pth = Number(el("pth").value);
+      
+      el("dOutVal").textContent = d.toFixed(0);
+      el("pthVal").textContent = pth.toFixed(0);
+      
+      const mu = pathloss_dB(d, d0, last.Khat, last.gammaHat);
+      animateValue(el("muAtD"), mu, " dB");
+      
+      const outPL = (mu < pth) ? 1.0 : 0.0;
+      el("outPL").textContent = outPL.toFixed(3);
+      
+      const sigma = Math.max(1e-9, last.sigma);
+      const z = (pth - mu) / sigma;
+      animateValue(el("zScore"), z);
+      
+      const outSH = normcdf(z);
+      el("outSH").textContent = outSH.toFixed(3);
+      
+      plotOutageViz(cvOut, mu, sigma, pth);
+    }
+    
+    function regenCorr() {
+      const dcorr = Number(el("dcorr").value);
+      el("dcVal").textContent = dcorr.toFixed(0);
+      
+      const sigma = Math.max(1e-9, last.sigma);
+      const dGrid = [];
+      for (let di = 1; di <= 300; di += 2) dGrid.push(di);
+      
+      const s = correlatedShadowing(dGrid, sigma, dcorr);
+      plotTrace(cvCorr, dGrid, s);
+    }
+    
+    async function recompute() {
+      const recomputeBtn = el("recomputeBtn");
+      setLoading(recomputeBtn, true);
+      
+      // Simulate computation delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const d0 = Number(el("d0").value);
+      const K = Number(el("K").value);
+      const fitMode = el("fitMode").value;
+      
+      const parsed = parseCSV(el("dataText").value);
+      if (parsed.d.length < 3) {
+        alert("Please provide at least 3 data points.");
+        setLoading(recomputeBtn, false);
+        return;
+      }
+      
+      let fit;
+      if (fitMode === "fitGamma") fit = fitGammaFixedK(parsed.d, parsed.y, d0, K);
+      else fit = fitKandGamma(parsed.d, parsed.y, d0);
+      
+      const r = residuals(parsed.d, parsed.y, d0, fit.Khat, fit.gammaHat);
+      const sig2 = variance(r);
+      const sigma = Math.sqrt(sig2);
+      
+      last = { d: parsed.d, y: parsed.y, d0, K, Khat: fit.Khat, gammaHat: fit.gammaHat, sig2, sigma, res: r };
+      
+      // Animate KPI updates
+      animateValue(el("gammaHat"), fit.gammaHat);
+      animateValue(el("Khat"), fit.Khat, " dB");
+      animateValue(el("sig2Hat"), sig2);
+      animateValue(el("sigHat"), sigma);
+      
+      plotFit(cvFit, parsed.d, parsed.y, d0, fit.Khat, fit.gammaHat);
+      plotHistogram(cvHist, r);
+      
+      updateOutage();
+      regenCorr();
+      
+      setLoading(recomputeBtn, false);
+    }
+    
+    // -------------------- Enhanced Tabs --------------------
+    function setTab(name) {
+      document.querySelectorAll(".tabcontent").forEach(div => {
+        div.classList.toggle("active", div.id === `tab-${name}`);
+      });
+      
+      document.querySelectorAll(".tabbtn").forEach(btn => {
+        const isOn = btn.dataset.tab === name;
+        btn.setAttribute("aria-selected", isOn ? "true" : "false");
+        btn.style.transform = isOn ? "translateY(-1px)" : "none";
+      });
+      
+      // Redraw canvases when tab becomes visible
+      if (name === "fit") {
+        plotFit(cvFit, last.d, last.y, last.d0, last.Khat, last.gammaHat);
+        plotHistogram(cvHist, last.res);
+      } else if (name === "out") {
+        updateOutage();
+      } else if (name === "corr") {
+        regenCorr();
+      }
+    }
+    
+    document.querySelectorAll(".tabbtn").forEach(btn => {
+      btn.addEventListener("click", () => setTab(btn.dataset.tab));
+    });
+    
+    // -------------------- Wiring --------------------
+    el("loadDefault").addEventListener("click", () => {
+      const def = defaultDataset();
+      el("d0").value = def.d0;
+      el("K").value = def.K;
+      el("dataText").value = def.text;
+      recompute();
+    });
+    
+    el("recomputeBtn").addEventListener("click", recompute);
+    el("fitMode").addEventListener("change", recompute);
+    el("d0").addEventListener("change", recompute);
+    el("K").addEventListener("change", recompute);
+    
+    el("dOut").addEventListener("input", updateOutage);
+    el("pth").addEventListener("input", updateOutage);
+    
+    el("dcorr").addEventListener("input", regenCorr);
+    el("regenCorr").addEventListener("click", regenCorr);
+    
+    // -------------------- Initialization --------------------
+    (() => {
+      const def = defaultDataset();
+      el("dataText").value = def.text;
+      recompute();
+      setTab("fit");
+    })();
+  </script>
+</body>
+</html>
