@@ -1,0 +1,305 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.2">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!doctype html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta charset="utf-8" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;meta name="viewport" content="width=device-width,initial-scale=1" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;title&gt;AWGN Intuition Lab: Constellation &amp; BER&lt;/title&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 18px; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.grid { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>label { display:block; margin-top: 10px; font-size: 0.95rem; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>input[type="range"] { width: 100%; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.row { display:flex; justify-content: space-between; gap: 8px; align-items:center; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>canvas { width: 100%; height: 420px; border: 1px solid #ddd; border-radius: 10px; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>button { padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc; background: #f7f7f7; cursor:pointer; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>button:hover { background:#efefef; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.small { font-size: 0.9rem; color:#444; line-height:1.35; }</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;h1&gt;AWGN Lab: Constellation &amp; BER&lt;/h1&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;div class="grid"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="card"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="row"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;strong&gt;Controls&lt;/strong&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="runBtn"&gt;Resimulate&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>Modulation</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;select id="modSel"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value="BPSK"&gt;BPSK&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value="QPSK" selected&gt;QPSK&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;option value="16QAM"&gt;16-QAM&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/label&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>SNR (Eb/N0) [dB] &lt;span class="mono" id="snrVal"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;input id="snr" type="range" min="-2" max="18" step="0.5" value="8" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/label&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>Number of bits &lt;span class="mono" id="nBitsVal"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;input id="nBits" type="range" min="2000" max="80000" step="1000" value="20000" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/label&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>Plot points (subsample) &lt;span class="mono" id="nPlotVal"&gt;&lt;/span&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;input id="nPlot" type="range" min="300" max="6000" step="100" value="2000" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/label&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;hr /&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="small"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div&gt;&lt;strong&gt;Estimated BER:&lt;/strong&gt; &lt;span class="mono" id="berEst"&gt;—&lt;/span&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div&gt;&lt;strong&gt;Bits/symbol:&lt;/strong&gt; &lt;span class="mono" id="bps"&gt;—&lt;/span&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div&gt;&lt;strong&gt;Noise σ per dimension:&lt;/strong&gt; &lt;span class="mono" id="sigma"&gt;—&lt;/span&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div style="margin-top:10px;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;strong&gt;What to observe&lt;/strong&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;ul&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;li&gt;As Eb/N0 decreases, clusters overlap → decisions flip.&lt;/li&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;li&gt;Higher-order QAM needs higher Eb/N0 for same BER.&lt;/li&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;li&gt;Increase bits to reduce Monte Carlo variance at low BER.&lt;/li&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;/ul&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="card" style="margin-bottom:12px;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;strong&gt;Constellation (received samples)&lt;/strong&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="small"&gt;Gray decision is ML over AWGN (nearest neighbor).&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;canvas id="cv" width="900" height="420"&gt;&lt;/canvas&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;div class="card" style="margin-top:12px;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;strong&gt;Notes&lt;/strong&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="small"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">          </span>This uses unit average symbol energy normalization. Eb/N0 is mapped to noise variance using</p>
+<p class="p1"><span class="Apple-converted-space">          </span>&lt;span class="mono"&gt;σ² = N0/2 = Es / (2·(Es/N0))&lt;/span&gt; and &lt;span class="mono"&gt;Es/N0 = (Eb/N0)·(bits/symbol)&lt;/span&gt;.</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1">/* ---------- Utilities ---------- */</p>
+<p class="p1">function randn() {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Box-Muller</p>
+<p class="p1"><span class="Apple-converted-space">  </span>let u = 0, v = 0;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>while (u === 0) u = Math.random();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>while (v === 0) v = Math.random();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }</p>
+<p class="p2"><br></p>
+<p class="p1">/* ---------- Constellations (unit average Es) ---------- */</p>
+<p class="p1">function constellation(mod){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (mod === "BPSK") {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// symbols on real axis: {-1,+1}, Es=1</p>
+<p class="p1"><span class="Apple-converted-space">    </span>return { M:2, bps:1, sym: [-1, +1].map(x=&gt;({re:x, im:0, bits:[x&gt;0?1:0]})) };</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (mod === "QPSK") {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// Gray: 00,01,11,10 on quadrants; normalize Es=1</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const a = 1/Math.sqrt(2);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const pts = [</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{re:+a, im:+a, bits:[0,0]},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{re:-a, im:+a, bits:[0,1]},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{re:-a, im:-a, bits:[1,1]},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{re:+a, im:-a, bits:[1,0]},</p>
+<p class="p1"><span class="Apple-converted-space">    </span>];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>return { M:4, bps:2, sym: pts };</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (mod === "16QAM") {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// Gray per axis: 00-&gt;-3, 01-&gt;-1, 11-&gt;+1, 10-&gt;+3</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const levels = [</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{v:-3, bits:[0,0]},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{v:-1, bits:[0,1]},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{v:+1, bits:[1,1]},</p>
+<p class="p1"><span class="Apple-converted-space">      </span>{v:+3, bits:[1,0]},</p>
+<p class="p1"><span class="Apple-converted-space">    </span>];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let pts = [];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>for (const I of levels){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>for (const Q of levels){</p>
+<p class="p1"><span class="Apple-converted-space">        </span>pts.push({re:I.v, im:Q.v, bits:[...I.bits, ...Q.bits]});</p>
+<p class="p1"><span class="Apple-converted-space">      </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// Normalize to unit average Es: for 16QAM with levels ±1,±3, E[re^2]=5, E[im^2]=5 =&gt; Es=10</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const s = 1/Math.sqrt(10);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>pts = pts.map(p=&gt;({re:p.re*s, im:p.im*s, bits:p.bits}));</p>
+<p class="p1"><span class="Apple-converted-space">    </span>return { M:16, bps:4, sym: pts };</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>throw new Error("Unknown modulation");</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function bitsToSym(bits, C){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>// bits array length = bps; map to matching symbol (by exact bit pattern)</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (const p of C.sym){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>let ok = true;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>for (let k=0;k&lt;C.bps;k++) if (p.bits[k] !== bits[k]) { ok=false; break; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (ok) return p;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>throw new Error("bitsToSym mapping failed");</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">function nearestSym(y, C){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>let best = null, bestd = Infinity;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (const p of C.sym){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const dr = y.re - p.re, di = y.im - p.im;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const d = dr*dr + di*di;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>if (d &lt; bestd){ bestd = d; best = p; }</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>return best;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* ---------- Simulation ---------- */</p>
+<p class="p1">function simulate(mod, ebn0_dB, nBits){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const C = constellation(mod);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const bps = C.bps;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Ensure integer #symbols</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const nSym = Math.floor(nBits / bps);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const Nbits = nSym * bps;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Eb/N0 -&gt; Es/N0 = Eb/N0 * bps</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const ebn0 = Math.pow(10, ebn0_dB/10);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const esn0 = ebn0 * bps; // since Es=Eb*bps</p>
+<p class="p1"><span class="Apple-converted-space">  </span>// With unit Es=1, N0 = Es/(Es/N0)</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const N0 = 1 / esn0;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const sigma = Math.sqrt(N0/2);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>const txBits = new Array(Nbits);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const rxBits = new Array(Nbits);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const rxPts = new Array(nSym);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>let bitErr = 0;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (let i=0;i&lt;nSym;i++){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const b = [];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>for (let k=0;k&lt;bps;k++){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const bit = Math.random() &lt; 0.5 ? 0 : 1;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>txBits[i*bps + k] = bit;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>b.push(bit);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const x = bitsToSym(b, C);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>// AWGN</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const y = { re: x.re + sigma*randn(), im: x.im + sigma*randn() };</p>
+<p class="p1"><span class="Apple-converted-space">    </span>rxPts[i] = y;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>const xhat = nearestSym(y, C);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>for (let k=0;k&lt;bps;k++){</p>
+<p class="p1"><span class="Apple-converted-space">      </span>const bhat = xhat.bits[k];</p>
+<p class="p1"><span class="Apple-converted-space">      </span>rxBits[i*bps + k] = bhat;</p>
+<p class="p1"><span class="Apple-converted-space">      </span>if (bhat !== txBits[i*bps + k]) bitErr++;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>return { C, bps, sigma, Nbits, ber: bitErr / Nbits, rxPts };</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* ---------- Plotting ---------- */</p>
+<p class="p1">function drawConstellation(canvas, C, rxPts, nPlot){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const ctx = canvas.getContext("2d");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const W = canvas.width, H = canvas.height;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.clearRect(0,0,W,H);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Determine plot bounds based on constellation radius</p>
+<p class="p1"><span class="Apple-converted-space">  </span>let maxAbs = 0.0;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (const p of C.sym){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>maxAbs = Math.max(maxAbs, Math.abs(p.re), Math.abs(p.im));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Add margin for noise</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const lim = maxAbs * 1.8 + 0.6;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>function xmap(x){ return (x/lim*0.45 + 0.5) * W; }</p>
+<p class="p1"><span class="Apple-converted-space">  </span>function ymap(y){ return (0.5 - y/lim*0.45) * H; }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Axes</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.strokeStyle = "#bbb";</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.lineWidth = 1;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.beginPath();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.stroke();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Ideal points</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.fillStyle = "#111";</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (const p of C.sym){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const x = xmap(p.re), y = ymap(p.im);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ctx.beginPath();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ctx.arc(x,y,5,0,2*Math.PI);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ctx.fill();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>// Received samples (subsample)</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const step = Math.max(1, Math.floor(rxPts.length / nPlot));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>ctx.fillStyle = "rgba(80,80,80,0.35)";</p>
+<p class="p1"><span class="Apple-converted-space">  </span>for (let i=0;i&lt;rxPts.length;i+=step){</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const y = rxPts[i];</p>
+<p class="p1"><span class="Apple-converted-space">    </span>const x = xmap(y.re), yy = ymap(y.im);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ctx.beginPath();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ctx.arc(x,yy,2.2,0,2*Math.PI);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>ctx.fill();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* ---------- UI Wiring ---------- */</p>
+<p class="p1">const snr = document.getElementById("snr");</p>
+<p class="p1">const nBits = document.getElementById("nBits");</p>
+<p class="p1">const nPlot = document.getElementById("nPlot");</p>
+<p class="p1">const modSel = document.getElementById("modSel");</p>
+<p class="p1">const runBtn = document.getElementById("runBtn");</p>
+<p class="p2"><br></p>
+<p class="p1">const snrVal = document.getElementById("snrVal");</p>
+<p class="p1">const nBitsVal = document.getElementById("nBitsVal");</p>
+<p class="p1">const nPlotVal = document.getElementById("nPlotVal");</p>
+<p class="p1">const berEst = document.getElementById("berEst");</p>
+<p class="p1">const bpsEl = document.getElementById("bps");</p>
+<p class="p1">const sigmaEl = document.getElementById("sigma");</p>
+<p class="p2"><br></p>
+<p class="p1">function refreshLabels(){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>snrVal.textContent = Number(snr.value).toFixed(1);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>nBitsVal.textContent = Number(nBits.value).toString();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>nPlotVal.textContent = Number(nPlot.value).toString();</p>
+<p class="p1">}</p>
+<p class="p1">function run(){</p>
+<p class="p1"><span class="Apple-converted-space">  </span>refreshLabels();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const cv = document.getElementById("cv");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const res = simulate(modSel.value, Number(snr.value), Number(nBits.value));</p>
+<p class="p1"><span class="Apple-converted-space">  </span>berEst.textContent = res.ber.toExponential(3);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>bpsEl.textContent = String(res.bps);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>sigmaEl.textContent = res.sigma.toExponential(3);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>drawConstellation(cv, res.C, res.rxPts, Number(nPlot.value));</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">snr.addEventListener("input", run);</p>
+<p class="p1">nBits.addEventListener("input", refreshLabels);</p>
+<p class="p1">nPlot.addEventListener("input", run);</p>
+<p class="p1">modSel.addEventListener("change", run);</p>
+<p class="p1">runBtn.addEventListener("click", run);</p>
+<p class="p2"><br></p>
+<p class="p1">run();</p>
+<p class="p1">&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
