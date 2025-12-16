@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SSY135 Lab L2 — Path Loss & Shadowing</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 18px; }
+    h1 { margin: 0 0 6px 0; }
+    .sub { color:#444; margin: 0 0 14px 0; line-height:1.35; }
+    .grid { display:grid; grid-template-columns: 360px 1fr; gap: 16px; align-items:start; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:12px; background:#fff; }
+    .row { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; }
+    label { display:block; margin-top:10px; font-size:0.95rem; }
+    input[type="range"] { width: 100%; }
+    input[type="number"], select, textarea { width:100%; box-sizing:border-box; padding:6px; border-radius:8px; border:1px solid #ccc; }
+    textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 12px; }
+    button { padding:8px 10px; border-radius:10px; border:1px solid #ccc; background:#f7f7f7; cursor:pointer; }
+    button:hover { background:#efefef; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    canvas { width:100%; height:360px; border:1px solid #ddd; border-radius:12px; display:block; }
+    .small { font-size:0.92rem; color:#333; line-height:1.35; }
+    .kpi { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; }
+    .pill { border:1px solid #e5e5e5; border-radius:12px; padding:10px; }
+    .warn { color:#7a2; }
+    .note { color:#444; }
+    .hr { height:1px; background:#eee; margin:12px 0; }
+  </style>
+</head>
+<body>
+  <h1>Lab L2 — Path Loss & Shadowing</h1>
+  <p class="sub">
+    Fit a log-distance path-loss model, estimate shadowing statistics, and compute outage probability.
+    This page is designed to match the Lecture 2 flow (path loss → shadowing → outage). 
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="row">
+        <strong>Model & Data</strong>
+        <div class="row">
+          <button id="loadDefault">Load default dataset</button>
+          <button id="recomputeBtn">Recompute</button>
+        </div>
+      </div>
+
+      <div class="small note" style="margin-top:8px;">
+        Model (in dB): <span class="mono">Pr/Pt = K − 10·γ·log10(d/d0) + Xσ</span>, where <span class="mono">Xσ ~ N(0, σ²)</span>.
+      </div>
+
+      <label>
+        Reference distance d0 [m]
+        <input id="d0" type="number" value="1" min="0.1" step="0.1" />
+      </label>
+
+      <label>
+        K [dB] (intercept at d0, i.e., Pr/Pt at d=d0)
+        <input id="K" type="number" value="-35.8" step="0.1" />
+      </label>
+
+      <label>
+        Fit mode
+        <select id="fitMode">
+          <option value="fitGamma" selected>Fit γ (K fixed)</option>
+          <option value="fitBoth">Fit K and γ (ordinary least squares)</option>
+        </select>
+      </label>
+
+      <label>
+        Data (CSV: distance_m, Pr_over_Pt_dB)
+        <textarea id="dataText" rows="9" spellcheck="false"></textarea>
+      </label>
+
+      <div class="kpi">
+        <div class="pill">
+          <div class="small">Estimated γ</div>
+          <div class="mono" id="gammaHat">—</div>
+        </div>
+        <div class="pill">
+          <div class="small">Estimated K</div>
+          <div class="mono" id="Khat">—</div>
+        </div>
+        <div class="pill">
+          <div class="small">Residual variance σ² [dB²]</div>
+          <div class="mono" id="sig2Hat">—</div>
+        </div>
+        <div class="pill">
+          <div class="small">Residual std σ [dB]</div>
+          <div class="mono" id="sigHat">—</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <strong>Outage probability</strong>
+      <div class="small note" style="margin-top:6px;">
+        Outage is <span class="mono">P(Pr(d) &lt; Pth)</span>. With shadowing, Pr(d) in dB is Gaussian.
+      </div>
+
+      <label>
+        Distance d [m] <span class="mono" id="dOutVal"></span>
+        <input id="dOut" type="range" min="1" max="300" step="1" value="100" />
+      </label>
+
+      <label>
+        Threshold Pth [dB] for Pr/Pt <span class="mono" id="pthVal"></span>
+        <input id="pth" type="range" min="-140" max="-40" step="1" value="-110" />
+      </label>
+
+      <div class="kpi">
+        <div class="pill">
+          <div class="small">Mean Pr/Pt at d (path loss only)</div>
+          <div class="mono" id="muAtD">—</div>
+        </div>
+        <div class="pill">
+          <div class="small">Outage (path loss only)</div>
+          <div class="mono" id="outPL">—</div>
+        </div>
+        <div class="pill">
+          <div class="small">Outage (path loss + shadowing)</div>
+          <div class="mono" id="outSH">—</div>
+        </div>
+        <div class="pill">
+          <div class="small">z-score ( (Pth−μ)/σ )</div>
+          <div class="mono" id="zScore">—</div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <strong>Correlated shadowing (Gudmundson-style)</strong>
+      <div class="small note" style="margin-top:6px;">
+        Generates a correlated shadowing sequence along distance using
+        <span class="mono">corr(Δd)=exp(−Δd/dcorr)</span>.
+      </div>
+
+      <label>
+        Decorrelation distance dcorr [m] <span class="mono" id="dcVal"></span>
+        <input id="dcorr" type="range" min="10" max="200" step="5" value="70" />
+      </label>
+      <div class="row" style="margin-top:8px;">
+        <button id="regenCorr">Regenerate trace</button>
+        <div class="small"><span class="warn">Tip:</span> set dcorr small vs large and observe smoothness.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="row">
+          <strong>Path loss fit (measured vs model)</strong>
+          <span class="small note">Scatter = data, Line = fitted model</span>
+        </div>
+      </div>
+      <canvas id="cvFit" width="1000" height="360"></canvas>
+
+      <div class="card" style="margin:12px 0;">
+        <div class="row">
+          <strong>Shadowing residuals (dB)</strong>
+          <span class="small note">Histogram of residuals after subtracting fitted path loss</span>
+        </div>
+      </div>
+      <canvas id="cvHist" width="1000" height="360"></canvas>
+
+      <div class="card" style="margin:12px 0;">
+        <div class="row">
+          <strong>Correlated shadowing trace (dB)</strong>
+          <span class="small note">One realization along distance</span>
+        </div>
+      </div>
+      <canvas id="cvCorr" width="1000" height="360"></canvas>
+
+      <div class="card">
+        <strong>Suggested “what to observe”</strong>
+        <ul class="small">
+          <li>Increasing γ steepens the slope of Pr/Pt vs log10(d).</li>
+          <li>Shadowing variance controls how quickly outage increases around the threshold.</li>
+          <li>Correlation changes the smoothness of received power vs distance without changing the marginal σ.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* -------------------- Math utils -------------------- */
+function clamp(x,a,b){ return Math.max(a, Math.min(b,x)); }
+function mean(a){ return a.reduce((s,v)=>s+v,0)/a.length; }
+function dot(a,b){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return s; }
+function variance(a){
+  const m = mean(a);
+  return a.reduce((s,v)=>s+(v-m)*(v-m),0)/a.length;
+}
+
+// Error function approximation for Normal CDF
+function erf(x){
+  // Abramowitz-Stegun approximation
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+  const a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429;
+  const p=0.3275911;
+  const t = 1/(1+p*x);
+  const y = 1 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-x*x);
+  return sign*y;
+}
+function normcdf(z){ return 0.5*(1+erf(z/Math.SQRT2)); }
+
+// Gaussian RNG (Box-Muller)
+function randn(){
+  let u=0,v=0;
+  while(u===0) u=Math.random();
+  while(v===0) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+/* -------------------- Parsing & model -------------------- */
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(s=>s && !s.startsWith("#"));
+  const d=[], y=[];
+  for(const ln of lines){
+    const parts = ln.split(/[,;\s]+/).filter(Boolean);
+    if(parts.length < 2) continue;
+    const di = Number(parts[0]);
+    const yi = Number(parts[1]);
+    if(Number.isFinite(di) && Number.isFinite(yi)){
+      d.push(di); y.push(yi);
+    }
+  }
+  return {d,y};
+}
+
+function pathloss_dB(d, d0, K, gamma){
+  return K - 10*gamma*Math.log10(d/d0);
+}
+
+// Fit gamma with K fixed: minimize sum (y - (K - 10γ log10(d/d0)))^2
+function fitGammaFixedK(d, y, d0, K){
+  const x = d.map(di => Math.log10(di/d0));
+  // y = K - 10*gamma*x + e => (K - y) = 10*gamma*x - e
+  const num = dot(x, x.map((xi,i)=> (K - y[i]) * xi));
+  const den = 10*dot(x,x);
+  const gammaHat = num/den;
+  return {Khat:K, gammaHat};
+}
+
+// Fit both K and gamma (OLS): y = K + b*x, where b = -10*gamma
+function fitKandGamma(d, y, d0){
+  const x = d.map(di => Math.log10(di/d0));
+  const mx = mean(x), my = mean(y);
+  let sxx=0, sxy=0;
+  for(let i=0;i<x.length;i++){
+    sxx += (x[i]-mx)*(x[i]-mx);
+    sxy += (x[i]-mx)*(y[i]-my);
+  }
+  const b = sxy/sxx;           // slope
+  const Khat = my - b*mx;      // intercept
+  const gammaHat = -b/10;
+  return {Khat, gammaHat};
+}
+
+function residuals(d,y,d0,Khat,gammaHat){
+  const r = [];
+  for(let i=0;i<d.length;i++){
+    r.push(y[i] - pathloss_dB(d[i], d0, Khat, gammaHat));
+  }
+  return r;
+}
+
+/* -------------------- Default dataset (synthetic but consistent) --------------------
+   This produces a dataset with:
+   - d0 = 1 m
+   - K ≈ -35.8 dB (so mean at 100 m is about -110 dB for γ=3.71)
+   - γ = 3.71
+   - residual variance σ² ≈ 13.29 dB² (σ ≈ 3.65 dB)
+   It is intended to mirror the lecture example workflow.
+*/
+function defaultDataset(){
+  const d0 = 1;
+  const K = -35.8;
+  const gamma = 3.71;
+  const sig2 = 13.29;
+  const sigma = Math.sqrt(sig2);
+
+  // distances similar to lecture (1..300m, sparse)
+  const d = [];
+  for(let di=5; di<=300; di+=10) d.push(di);
+  d.unshift(1); d.unshift(2); d.unshift(3);
+
+  // create random residuals, then orthogonalize vs x=log10(d/d0) to ensure gamma fit is stable
+  const x = d.map(di => Math.log10(di/d0));
+  let e = x.map(()=> randn());
+
+  // remove projection onto x (so sum e_i x_i = 0)
+  const proj = dot(e,x)/dot(x,x);
+  e = e.map((ei,i)=> ei - proj*x[i]);
+
+  // scale to desired variance
+  const eVar = variance(e);
+  const scale = sigma / Math.sqrt(eVar);
+  e = e.map(ei => ei*scale);
+
+  const y = d.map((di,i) => pathloss_dB(di,d0,K,gamma) + e[i]);
+
+  // CSV text
+  const lines = ["# distance_m, Pr_over_Pt_dB"];
+  for(let i=0;i<d.length;i++){
+    lines.push(`${d[i].toFixed(3)}, ${y[i].toFixed(3)}`);
+  }
+  return {d0, K, gamma, sig2, text: lines.join("\n")};
+}
+
+/* -------------------- Plotting (canvas) -------------------- */
+function clearCanvas(cv){
+  const ctx = cv.getContext("2d");
+  ctx.clearRect(0,0,cv.width,cv.height);
+  return ctx;
+}
+
+function drawAxes(ctx, W, H, pad, xMin,xMax,yMin,yMax){
+  ctx.strokeStyle = "#bbb";
+  ctx.lineWidth = 1;
+
+  // box
+  ctx.strokeRect(pad, pad, W-2*pad, H-2*pad);
+
+  // ticks
+  ctx.fillStyle = "#444";
+  ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace";
+  for(let k=0;k<=5;k++){
+    const xt = xMin + (xMax-xMin)*k/5;
+    const xpix = pad + (W-2*pad)*k/5;
+    ctx.beginPath();
+    ctx.moveTo(xpix, H-pad);
+    ctx.lineTo(xpix, H-pad+5);
+    ctx.stroke();
+    ctx.fillText(xt.toFixed(2), xpix-14, H-pad+18);
+  }
+  for(let k=0;k<=5;k++){
+    const yt = yMin + (yMax-yMin)*k/5;
+    const ypix = H-pad - (H-2*pad)*k/5;
+    ctx.beginPath();
+    ctx.moveTo(pad-5, ypix);
+    ctx.lineTo(pad, ypix);
+    ctx.stroke();
+    ctx.fillText(yt.toFixed(1), 4, ypix+4);
+  }
+
+  function xMap(x){ return pad + (x-xMin)/(xMax-xMin)*(W-2*pad); }
+  function yMap(y){ return H-pad - (y-yMin)/(yMax-yMin)*(H-2*pad); }
+  return {xMap, yMap};
+}
+
+function plotFit(cv, d, y, d0, Khat, gammaHat){
+  const ctx = clearCanvas(cv);
+  const W=cv.width, H=cv.height, pad=55;
+
+  const x = d.map(di=>Math.log10(di/d0));
+  const xMin = Math.min(...x), xMax = Math.max(...x);
+  const yMin = Math.min(...y)-5, yMax = Math.max(...y)+5;
+
+  const {xMap,yMap} = drawAxes(ctx,W,H,pad,xMin,xMax,yMin,yMax);
+
+  // model line
+  ctx.strokeStyle = "#111";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for(let i=0;i<=250;i++){
+    const xv = xMin + (xMax-xMin)*i/250;
+    const dv = d0*Math.pow(10,xv);
+    const yv = pathloss_dB(dv,d0,Khat,gammaHat);
+    const xp = xMap(xv), yp = yMap(yv);
+    if(i===0) ctx.moveTo(xp,yp); else ctx.lineTo(xp,yp);
+  }
+  ctx.stroke();
+
+  // scatter data
+  ctx.fillStyle = "rgba(80,80,80,0.6)";
+  for(let i=0;i<d.length;i++){
+    const xp = xMap(x[i]), yp = yMap(y[i]);
+    ctx.beginPath();
+    ctx.arc(xp,yp,3.2,0,2*Math.PI);
+    ctx.fill();
+  }
+
+  // labels
+  ctx.fillStyle="#222";
+  ctx.font="13px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("x = log10(d/d0)", W/2-45, H-8);
+  ctx.save();
+  ctx.translate(14, H/2+40);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("Pr/Pt [dB]", 0, 0);
+  ctx.restore();
+}
+
+function plotHistogram(cv, r){
+  const ctx = clearCanvas(cv);
+  const W=cv.width, H=cv.height, pad=55;
+
+  const rMin = Math.min(...r), rMax = Math.max(...r);
+  const xMin = Math.floor(rMin-1), xMax = Math.ceil(rMax+1);
+
+  const bins = 18;
+  const counts = new Array(bins).fill(0);
+  for(const v of r){
+    const t = (v-xMin)/(xMax-xMin);
+    const b = clamp(Math.floor(t*bins), 0, bins-1);
+    counts[b]++;
+  }
+  const maxC = Math.max(...counts);
+
+  const {xMap,yMap} = drawAxes(ctx,W,H,pad,xMin,xMax,0,maxC*1.1);
+
+  ctx.fillStyle = "rgba(80,80,80,0.55)";
+  for(let b=0;b<bins;b++){
+    const x0 = xMin + (xMax-xMin)*b/bins;
+    const x1 = xMin + (xMax-xMin)*(b+1)/bins;
+    const c = counts[b];
+    const xp0=xMap(x0), xp1=xMap(x1);
+    const yp=yMap(c);
+    ctx.fillRect(xp0, yp, xp1-xp0-1, (H-pad)-yp);
+  }
+
+  ctx.fillStyle="#222";
+  ctx.font="13px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Residuals [dB]", W/2-45, H-8);
+  ctx.save();
+  ctx.translate(14, H/2+60);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("Count", 0, 0);
+  ctx.restore();
+}
+
+function plotTrace(cv, d, s){
+  const ctx = clearCanvas(cv);
+  const W=cv.width, H=cv.height, pad=55;
+
+  const xMin = Math.min(...d), xMax = Math.max(...d);
+  const yMin = Math.min(...s)-2, yMax = Math.max(...s)+2;
+
+  const {xMap,yMap} = drawAxes(ctx,W,H,pad,xMin,xMax,yMin,yMax);
+
+  ctx.strokeStyle="#111";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<d.length;i++){
+    const xp=xMap(d[i]), yp=yMap(s[i]);
+    if(i===0) ctx.moveTo(xp,yp); else ctx.lineTo(xp,yp);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle="#222";
+  ctx.font="13px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Distance [m]", W/2-45, H-8);
+  ctx.save();
+  ctx.translate(14, H/2+80);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("Shadowing Xσ [dB]", 0, 0);
+  ctx.restore();
+}
+
+/* -------------------- Correlated shadowing generator -------------------- */
+function correlatedShadowing(d, sigma, dcorr){
+  // AR(1) in distance: s_i = a*s_{i-1} + sqrt(1-a^2)*sigma*N(0,1), with a=exp(-Δd/dcorr)
+  const s = new Array(d.length).fill(0);
+  s[0] = sigma*randn();
+  for(let i=1;i<d.length;i++){
+    const dd = d[i]-d[i-1];
+    const a = Math.exp(-dd/dcorr);
+    const b = Math.sqrt(Math.max(0, 1-a*a));
+    s[i] = a*s[i-1] + b*sigma*randn();
+  }
+  return s;
+}
+
+/* -------------------- UI wiring -------------------- */
+const el = id => document.getElementById(id);
+
+const cvFit = el("cvFit");
+const cvHist = el("cvHist");
+const cvCorr = el("cvCorr");
+
+let last = {d:[], y:[], d0:1, K:-35.8, Khat:-35.8, gammaHat:3.71, sig2:13.29, sigma:Math.sqrt(13.29), res:[]};
+let corrTrace = null;
+
+function updateOutage(){
+  const d0 = Number(el("d0").value);
+  const d = Number(el("dOut").value);
+  const pth = Number(el("pth").value);
+
+  el("dOutVal").textContent = d.toFixed(0);
+  el("pthVal").textContent = pth.toFixed(0);
+
+  const mu = pathloss_dB(d, d0, last.Khat, last.gammaHat);
+  el("muAtD").textContent = mu.toFixed(2) + " dB";
+
+  // Path loss only is deterministic: outage is 0 or 1
+  const outPL = (mu < pth) ? 1.0 : 0.0;
+  el("outPL").textContent = outPL.toFixed(3);
+
+  const sigma = last.sigma;
+  const z = (pth - mu) / sigma;
+  el("zScore").textContent = z.toFixed(3);
+
+  const outSH = normcdf(z);
+  el("outSH").textContent = outSH.toFixed(3);
+}
+
+function recompute(){
+  const d0 = Number(el("d0").value);
+  const K = Number(el("K").value);
+  const fitMode = el("fitMode").value;
+
+  const parsed = parseCSV(el("dataText").value);
+  if(parsed.d.length < 3){
+    alert("Please provide at least 3 data points.");
+    return;
+  }
+
+  let fit;
+  if(fitMode === "fitGamma"){
+    fit = fitGammaFixedK(parsed.d, parsed.y, d0, K);
+  } else {
+    fit = fitKandGamma(parsed.d, parsed.y, d0);
+  }
+
+  const r = residuals(parsed.d, parsed.y, d0, fit.Khat, fit.gammaHat);
+  const sig2 = variance(r);
+  const sigma = Math.sqrt(sig2);
+
+  last = {d:parsed.d, y:parsed.y, d0, K, Khat:fit.Khat, gammaHat:fit.gammaHat, sig2, sigma, res:r};
+
+  el("gammaHat").textContent = fit.gammaHat.toFixed(4);
+  el("Khat").textContent = fit.Khat.toFixed(2) + " dB";
+  el("sig2Hat").textContent = sig2.toFixed(2);
+  el("sigHat").textContent = sigma.toFixed(3);
+
+  plotFit(cvFit, parsed.d, parsed.y, d0, fit.Khat, fit.gammaHat);
+  plotHistogram(cvHist, r);
+
+  // refresh outage and correlated trace
+  updateOutage();
+  regenCorr();
+}
+
+function regenCorr(){
+  const dcorr = Number(el("dcorr").value);
+  el("dcVal").textContent = dcorr.toFixed(0);
+
+  if(!last || last.d.length < 2) return;
+  const sigma = last.sigma;
+
+  // make a dense distance grid for a smooth trace
+  const dMin = 1, dMax = 300;
+  const dGrid = [];
+  for(let di=dMin; di<=dMax; di+=2) dGrid.push(di);
+
+  corrTrace = correlatedShadowing(dGrid, sigma, dcorr);
+  plotTrace(cvCorr, dGrid, corrTrace);
+}
+
+// Load default dataset
+el("loadDefault").addEventListener("click", () => {
+  const def = defaultDataset();
+  el("d0").value = def.d0;
+  el("K").value = def.K;
+  el("dataText").value = def.text;
+  recompute();
+});
+
+el("recomputeBtn").addEventListener("click", recompute);
+el("fitMode").addEventListener("change", recompute);
+el("d0").addEventListener("change", recompute);
+el("K").addEventListener("change", recompute);
+
+el("dOut").addEventListener("input", updateOutage);
+el("pth").addEventListener("input", updateOutage);
+el("dcorr").addEventListener("input", regenCorr);
+el("regenCorr").addEventListener("click", regenCorr);
+
+// Initialize with default dataset
+(() => {
+  const def = defaultDataset();
+  el("dataText").value = def.text;
+  recompute();
+})();
+</script>
+</body>
+</html>
