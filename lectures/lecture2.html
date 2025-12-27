@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Propagation - Interactive Lecture 2</title>
+    <style>
+        :root {
+            /* Matches Lecture 1 Color Scheme */
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --light: #ecf0f1;
+            --text: #333;
+            --border: #bdc3c7;
+            --success: #27ae60;
+            --danger: #c0392b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .subtitle { font-size: 0.9rem; opacity: 0.8; }
+
+        /* Navigation */
+        .tab-nav {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { background-color: var(--light); }
+        .tab-btn.active {
+            border-bottom-color: var(--accent);
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* Content */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Controls Panel */
+        .panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid var(--light);
+        }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            display: block;
+        }
+        .value-badge {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            font-family: monospace;
+        }
+
+        /* Visualization Area */
+        .viz-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 450px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        canvas {
+            width: 100%;
+            height: 400px; /* Base height, scaled by JS */
+            background-color: #fff;
+        }
+
+        /* Theory Box */
+        .theory-box {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--accent);
+            font-size: 0.9rem;
+            display: none; /* Hidden by default */
+            line-height: 1.6;
+        }
+        .toggle-link {
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+        
+        /* Buttons */
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-top: 0.5rem;
+            transition: background 0.2s;
+        }
+        .btn:hover { background-color: #2980b9; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-layout { grid-template-columns: 1fr; }
+            .tab-btn { padding: 0.8rem 1rem; font-size: 0.9rem; }
+            header { padding: 1rem; }
+            .viz-container { min-height: 350px; }
+        }
+    </style>
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Radio Propagation</h1>
+        <div class="subtitle">Lecture 2: Antennas, Path Loss, and Fading</div>
+    </div>
+    <div style="text-align: right; font-size: 0.8rem;">
+        SSY135<br>Interactive Lab
+    </div>
+</header>
+
+<nav class="tab-nav">
+    <button id="btn-ant" class="tab-btn active" onclick="app.switchTab('antennas')">1. Antennas & Waves</button>
+    <button id="btn-tworay" class="tab-btn" onclick="app.switchTab('tworay')">2. Two-Ray Model</button>
+    <button id="btn-shadowing" class="tab-btn" onclick="app.switchTab('shadowing')">3. Shadowing</button>
+    <button id="btn-outage" class="tab-btn" onclick="app.switchTab('outage')">4. Outage Prob.</button>
+</nav>
+
+<div class="container">
+
+    <div id="antennas" class="tab-content active">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Frequency & Size</h3>
+                <p class="subtitle">See how frequency affects wavelength and antenna size.</p>
+                
+                <div class="control-group">
+                    <label>Frequency (f) <span id="val-freq" class="value-badge">900 MHz</span></label>
+                    <input type="range" id="sl-freq" min="300" max="30000" step="100" value="900">
+                    <small style="color:#666">Range: 300 MHz to 30 GHz</small>
+                </div>
+
+                <div class="theory-box" id="th-ant">
+                    <strong>Dipole Length ($L$):</strong> A half-wave dipole has length $L = \lambda/2 = c / (2f)$.<br>
+                    <strong>Implication:</strong> Higher frequencies allow for much smaller antennas, enabling technologies like Massive MIMO.<br>
+                    <strong>Aperture:</strong> Note that as antennas get smaller, their effective capture area ($A_e$) decreases, leading to higher path loss unless compensated by gain.
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-ant')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-ant"></canvas>
+                
+                <div style="margin-top:10px; font-size:0.9rem; color:#555;">
+                    Current Wavelength ($\lambda$): <strong id="out-lambda">-</strong> | 
+                    Dipole Size: <strong id="out-dipole">-</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tworay" class="tab-content">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Deterministic Path Loss</h3>
+                <p class="subtitle">Interference between LOS and Ground Reflection.</p>
+                
+                <div class="control-group">
+                    <label>Tx Height ($h_t$) <span id="val-ht" class="value-badge">30 m</span></label>
+                    <input type="range" id="sl-ht" min="1" max="100" value="30">
+                </div>
+                <div class="control-group">
+                    <label>Rx Height ($h_r$) <span id="val-hr" class="value-badge">2 m</span></label>
+                    <input type="range" id="sl-hr" min="1" max="20" step="0.5" value="2">
+                </div>
+                <div class="control-group">
+                    <label>Frequency <span id="val-tr-freq" class="value-badge">900 MHz</span></label>
+                    <input type="range" id="sl-tr-freq" min="100" max="5000" step="100" value="900">
+                </div>
+
+                <div class="theory-box" id="th-tr">
+                    <strong>Two-Ray Model:</strong><br>
+                    $P_r \propto |\frac{1}{d} + \frac{\Gamma}{d_{ref}}e^{-j\Delta\phi}|^2$.<br>
+                    Due to phase cancellation ($\Gamma \approx -1$), power decays rapidly after the <strong>Critical Distance ($d_c$)</strong>.<br>
+                    $d_c \approx 4 h_t h_r / \lambda$.<br>
+                    Slope changes from $d^{-2}$ (20dB/dec) to $d^{-4}$ (40dB/dec).
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-tr')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-tr"></canvas>
+                
+                <div id="tr-legend" style="display:flex; gap:15px; font-size:0.85rem; margin-top:5px;">
+                    <span style="color:#7f8c8d">● Free Space ($n=2$)</span>
+                    <span style="color:#c0392b; font-weight:bold;">● Two-Ray Model</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="shadowing" class="tab-content">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Log-Normal Shadowing</h3>
+                <p class="subtitle">Random variations due to obstacles.</p>
+                
+                <div class="control-group">
+                    <label>Path Loss Exp ($\gamma$) <span id="val-gamma" class="value-badge">3.0</span></label>
+                    <input type="range" id="sl-gamma" min="2" max="6" step="0.1" value="3.0">
+                </div>
+                <div class="control-group">
+                    <label>Shadowing ($\sigma_{dB}$) <span id="val-sigma" class="value-badge">4 dB</span></label>
+                    <input type="range" id="sl-sigma" min="0" max="12" step="0.5" value="4">
+                </div>
+                
+                <button class="btn" onclick="app.simShadowing()">Collect New Measurements</button>
+
+                <div class="theory-box" id="th-sh">
+                    <strong>Model:</strong> $P_r(d) = P(d_0) - 10\gamma \log_{10}(d/d_0) + X_\sigma$<br>
+                    where $X_\sigma \sim \mathcal{N}(0, \sigma^2_{dB})$.<br>
+                    $d_0$: Reference distance (set to 10m).<br>
+                    Measurements scatter around the deterministic path loss line (Green).
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-sh')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-sh"></canvas>
+                <div style="font-size:0.8rem; color:#666; margin-top:5px;">
+                    Blue dots: Measurements. Green Line: Deterministic Path Loss.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="outage" class="tab-content">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Outage Probability</h3>
+                <p class="subtitle">Probability signal drops below sensitivity.</p>
+                
+                <div class="control-group">
+                    <label>Mean Power ($P_{avg}$) <span id="val-pavg" class="value-badge">-80 dBm</span></label>
+                    <input type="range" id="sl-pavg" min="-110" max="-50" step="1" value="-80">
+                </div>
+                <div class="control-group">
+                    <label>Sensitivity ($P_{min}$) <span id="val-pmin" class="value-badge">-90 dBm</span></label>
+                    <input type="range" id="sl-pmin" min="-110" max="-50" step="1" value="-90">
+                </div>
+                <div class="control-group">
+                    <label>Uncertainty ($\sigma$) <span id="val-outsig" class="value-badge">6 dB</span></label>
+                    <input type="range" id="sl-outsig" min="1" max="12" step="0.5" value="6">
+                </div>
+
+                <div class="theory-box" id="th-out">
+                    <strong>Outage:</strong> $P_{out} = Pr(P_r < P_{min})$<br>
+                    $P_{out} = Q\left( \frac{P_{avg} - P_{min}}{\sigma} \right)$<br>
+                    <strong>Fade Margin:</strong> $M = P_{avg} - P_{min}$.<br>
+                    If $P_{avg} = P_{min}$ (0 dB margin), Outage is 50%.
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-out')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-out"></canvas>
+                
+                <div style="font-size:1.1rem; font-weight:bold; margin-top:10px; color:#2c3e50;">
+                    Outage Probability: <span id="res-outage" style="color:#c0392b">-%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div style="max-width:1100px; margin: 2rem auto; border-top:1px solid #ddd; padding-top:1rem; color:#7f8c8d; font-size:0.9rem;">
+    <strong>Instructor Notes:</strong>
+    <ul>
+        <li><strong>Tab 1 (Antennas):</strong> Use this to demonstrate scale. High frequencies (e.g., 28 GHz) enable antennas small enough to fit arrays on a fingertip.</li>
+        <li><strong>Tab 2 (Two-Ray):</strong> Highlight the "Breakpoint". Before $d_c$, reflection causes interference (fading). After $d_c$, signal drops very fast ($d^{-4}$). This limits range in rural/flat scenarios.</li>
+        <li><strong>Tab 3 (Shadowing):</strong> Explain that $\sigma$ represents "Clutter". The Green line is the physics calculation; the Blue dots are what a measurement device actually sees.</li>
+        <li><strong>Tab 4 (Outage):</strong> Demonstrate the "0 dB Margin" trap. Set $P_{avg} = P_{min}$. Students often expect 100% success, but the math shows exactly 50% outage due to variance.</li>
+    </ul>
+</div>
+
+<script>
+const app = {
+    currentTab: 'antennas',
+    shadowPoints: [],
+    frameRequest: null,
+
+    init: function() {
+        this.setupListeners();
+        this.simShadowing();
+        this.redrawActiveTab();
+        
+        // Robust resize listener
+        window.addEventListener('resize', () => {
+            if (this.frameRequest) cancelAnimationFrame(this.frameRequest);
+            this.frameRequest = requestAnimationFrame(() => this.redrawActiveTab());
+        });
+    },
+
+    setupListeners: function() {
+        // Tab 1
+        this.bindSlider('sl-freq', 'val-freq', ' MHz', () => this.drawAntennas());
+        
+        // Tab 2
+        this.bindSlider('sl-ht', 'val-ht', ' m', () => this.drawTwoRay());
+        this.bindSlider('sl-hr', 'val-hr', ' m', () => this.drawTwoRay());
+        this.bindSlider('sl-tr-freq', 'val-tr-freq', ' MHz', () => this.drawTwoRay());
+        
+        // Tab 3
+        this.bindSlider('sl-gamma', 'val-gamma', '', () => this.drawShadowing());
+        this.bindSlider('sl-sigma', 'val-sigma', ' dB', () => {
+            this.simShadowing(); 
+        });
+        
+        // Tab 4
+        this.bindSlider('sl-pavg', 'val-pavg', ' dBm', () => this.drawOutage());
+        this.bindSlider('sl-pmin', 'val-pmin', ' dBm', () => this.drawOutage());
+        this.bindSlider('sl-outsig', 'val-outsig', ' dB', () => this.drawOutage());
+    },
+
+    bindSlider: function(id, dispId, unit, callback) {
+        const el = document.getElementById(id);
+        const disp = document.getElementById(dispId);
+        if(!el) return;
+        
+        el.addEventListener('input', () => {
+            // Logic for unit formatting (MHz/GHz)
+            let val = parseFloat(el.value);
+            let text = val;
+            if(unit.includes('MHz')) {
+                if (val >= 1000) {
+                     text = (val/1000).toFixed(1) + ' GHz';
+                     disp.textContent = text;
+                } else {
+                     disp.textContent = Math.round(val) + unit;
+                }
+            } else {
+                disp.textContent = text + unit;
+            }
+            
+            // Throttle redraws
+            if (this.frameRequest) cancelAnimationFrame(this.frameRequest);
+            this.frameRequest = requestAnimationFrame(callback);
+        });
+    },
+
+    switchTab: function(tabId) {
+        this.currentTab = tabId;
+        
+        // DOM Updates
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        const activeContent = document.getElementById(tabId);
+        if(activeContent) activeContent.classList.add('active');
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById(
+            tabId === 'antennas' ? 'btn-ant' :
+            tabId === 'tworay' ? 'btn-tworay' :
+            tabId === 'shadowing' ? 'btn-shadowing' : 'btn-outage'
+        );
+        if(activeBtn) activeBtn.classList.add('active');
+
+        // Redraw immediately upon switch
+        this.redrawActiveTab();
+    },
+
+    toggle: function(id) {
+        const el = document.getElementById(id);
+        if(el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    },
+
+    redrawActiveTab: function() {
+        if(this.currentTab === 'antennas') this.drawAntennas();
+        else if(this.currentTab === 'tworay') this.drawTwoRay();
+        else if(this.currentTab === 'shadowing') this.drawShadowing();
+        else if(this.currentTab === 'outage') this.drawOutage();
+    },
+
+    // --- UTILITY: Robust Canvas Resizing for High DPI ---
+    resizeCanvas: function(canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        // Get visual size based on CSS
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const width = rect.width;
+        const height = 400; // Fixed visual height
+
+        // Set actual backing store size
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+
+        // Scale context to match
+        const ctx = canvas.getContext('2d');
+        ctx.resetTransform(); // Clear previous scales
+        ctx.scale(dpr, dpr);
+        
+        return { w: width, h: height, ctx: ctx };
+    },
+
+    // --- TAB 1: ANTENNAS ---
+    drawAntennas: function() {
+        const cv = document.getElementById('cv-ant');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const f_MHz = parseFloat(document.getElementById('sl-freq').value);
+        const c = 3e8;
+        const lambda = c / (f_MHz * 1e6); // meters
+        const L = lambda / 2;
+
+        // Scaling Logic: Human is reference
+        // Let Human (1.8m) take up 80% of canvas height
+        const pxPerMeter = (h * 0.8) / 1.8;
+        const humanH = 1.8 * pxPerMeter;
+        
+        ctx.clearRect(0,0,w,h);
+
+        // Draw Reference Human
+        const xRef = w * 0.25;
+        const yBase = h - 20;
+        
+        ctx.fillStyle = "#95a5a6";
+        ctx.fillRect(xRef - 15, yBase - humanH, 30, humanH); 
+        ctx.beginPath(); ctx.arc(xRef, yBase - humanH - 15, 15, 0, Math.PI*2); ctx.fill(); 
+        ctx.fillStyle = "#2c3e50";
+        ctx.textAlign = "center";
+        ctx.font = "14px sans-serif";
+        ctx.fillText("Human (1.8m)", xRef, yBase - 10);
+
+        // Draw Antenna
+        const xAnt = w * 0.75;
+        const antPx = L * pxPerMeter;
+        
+        // Zoom Logic
+        ctx.strokeStyle = "#8e44ad";
+        ctx.lineWidth = 4;
+        
+        // Center antenna vertically aligned with human head/torso area
+        const yCenter = yBase - humanH/2;
+
+        if (antPx < 20) {
+            // Too small: Draw simplified line + Magnifier
+            ctx.beginPath(); ctx.moveTo(xAnt, yCenter - 5); ctx.lineTo(xAnt, yCenter + 5); ctx.stroke();
+            ctx.fillStyle = "#e74c3c";
+            ctx.fillText("Tiny!", xAnt, yBase + 15);
+            
+            // Magnifying Glass Bubble
+            const bubR = 70;
+            const bubbleY = yCenter - 100;
+            ctx.fillStyle = "white"; ctx.strokeStyle="#333"; ctx.lineWidth=1;
+            ctx.beginPath(); ctx.arc(xAnt, bubbleY, bubR, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+            
+            // Draw Scaled Antenna inside bubble
+            // Let the bubble represent a 10cm window
+            const zoomWindowMeters = 0.1; 
+            const zoomPxPerMeter = (bubR * 1.5) / zoomWindowMeters;
+            const drawH = L * zoomPxPerMeter;
+
+            ctx.strokeStyle = "#8e44ad"; ctx.lineWidth=4;
+            ctx.beginPath(); 
+            ctx.moveTo(xAnt, bubbleY - drawH/2); 
+            ctx.lineTo(xAnt, bubbleY + drawH/2); 
+            ctx.stroke();
+            
+            ctx.fillStyle="#8e44ad"; 
+            ctx.fillText("Zoom (10cm window)", xAnt, bubbleY + bubR + 20);
+
+        } else if (antPx > h) {
+            // Too big
+            ctx.fillStyle = "#c0392b";
+            ctx.fillText("Antenna exceeds view!", xAnt, yCenter);
+        } else {
+            // Normal Draw
+            ctx.beginPath();
+            ctx.moveTo(xAnt, yCenter - antPx/2);
+            ctx.lineTo(xAnt, yCenter + antPx/2);
+            ctx.stroke();
+            
+            // Feed Point
+            ctx.fillStyle = "#333";
+            ctx.beginPath(); ctx.arc(xAnt, yCenter, 4, 0, Math.PI*2); ctx.fill();
+        }
+
+        // Labels
+        const lCm = (lambda*100).toFixed(1);
+        const dCm = (L*100).toFixed(1);
+        document.getElementById('out-lambda').innerText = lCm + " cm";
+        document.getElementById('out-dipole').innerText = dCm + " cm";
+    },
+
+    // --- TAB 2: TWO-RAY ---
+    drawTwoRay: function() {
+        const cv = document.getElementById('cv-tr');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const ht = parseFloat(document.getElementById('sl-ht').value);
+        const hr = parseFloat(document.getElementById('sl-hr').value);
+        const f = parseFloat(document.getElementById('sl-tr-freq').value) * 1e6;
+        const c = 3e8;
+        const lambda = c/f;
+
+        const dc = (4 * ht * hr) / lambda; 
+
+        ctx.clearRect(0,0,w,h);
+
+        // Plot settings
+        // X: 10m to 10,000m (Log scale)
+        // Y: -40dB to -160dB
+        const xMinLog = 1, xMaxLog = 4; // log10(10) -> log10(10000)
+        const yMax = -40, yMin = -140;
+
+        const mapX = (d) => {
+            const logD = Math.log10(d);
+            return 60 + ((logD - xMinLog) / (xMaxLog - xMinLog)) * (w - 80);
+        };
+        const mapY = (P) => {
+            return 20 + ((yMax - P) / (yMax - yMin)) * (h - 60);
+        };
+
+        // Grid
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        [10, 100, 1000, 10000].forEach(d => {
+            const x = mapX(d);
+            ctx.moveTo(x, 0); ctx.lineTo(x, h-40);
+            ctx.fillStyle = "#7f8c8d"; ctx.textAlign = "center";
+            ctx.fillText(d>=1000 ? (d/1000)+"km" : d+"m", x, h-25);
+        });
+        ctx.stroke();
+        
+        // Y-axis labels
+        for(let db = yMax; db >= yMin; db-=20) {
+            const y = mapY(db);
+            ctx.fillText(db, 30, y+4);
+        }
+
+        // 1. Free Space Path Loss (FSPL)
+        // Lfs = 20log10(4pi*d/lambda). Pr = Pt - Lfs. Assume Pt=0dBm, G=0dB.
+        ctx.beginPath();
+        ctx.strokeStyle = "#7f8c8d"; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
+        
+        for(let px = 0; px < w-80; px+=5) {
+            const ratio = px/(w-80);
+            const logD = xMinLog + ratio*(xMaxLog-xMinLog);
+            const d = Math.pow(10, logD);
+            const fspl = 20*Math.log10((4*Math.PI*d)/lambda);
+            const pr = -fspl;
+            const y = mapY(pr);
+            if (y > h-40) continue; 
+            if(px===0) ctx.moveTo(mapX(d), y); else ctx.lineTo(mapX(d), y);
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+
+        // 2. Two Ray Model
+        // E_tot = E_los + E_ref = (1/d_los) + Gamma * (1/d_ref) * exp(-j * deltaPhi)
+        // Pr propto |E_tot|^2
+        // Normalized so that at d -> 0, it matches FSPL
+        ctx.beginPath();
+        ctx.strokeStyle = "#c0392b"; ctx.lineWidth = 2;
+        
+        for(let px = 0; px < w-80; px+=1) { // High res for interference patterns
+            const ratio = px/(w-80);
+            const logD = xMinLog + ratio*(xMaxLog-xMinLog);
+            const d = Math.pow(10, logD);
+            
+            const dLos = Math.sqrt(d*d + (ht-hr)**2);
+            const dRef = Math.sqrt(d*d + (ht+hr)**2);
+            const phaseDiff = (2*Math.PI/lambda) * (dRef - dLos);
+            
+            // Reflection coefficient approx -1 for grazing incidence/long distance
+            const Gamma = -1;
+
+            // Construct Complex Phasor Sum
+            const re = (1/dLos) + Gamma * (1/dRef)*Math.cos(phaseDiff);
+            const im = Gamma * (1/dRef)*Math.sin(phaseDiff);
+            
+            const magSq = re*re + im*im;
+            
+            // Normalize to match FSPL equation scale factor (lambda/4pi)^2
+            const k = (lambda / (4*Math.PI))**2;
+            const prLin = k * magSq;
+            
+            // Avoid log(0)
+            const prDb = 10 * Math.log10(Math.max(prLin, 1e-18));
+            
+            const y = mapY(prDb);
+            
+            // Clipping logic
+            if(y > h-40) {
+                 ctx.moveTo(mapX(d), h-40); // Lift pen
+            } else {
+                 if(px===0) ctx.moveTo(mapX(d), y); else ctx.lineTo(mapX(d), y);
+            }
+        }
+        ctx.stroke();
+
+        // Breakpoint Marker
+        const xDc = mapX(dc);
+        if(xDc < w-80) {
+            ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(xDc, mapY(yMax)); ctx.lineTo(xDc, h-40); ctx.stroke();
+            ctx.fillStyle = "#2c3e50"; ctx.fillText("d_c", xDc+5, mapY(yMax)+15);
+        }
+    },
+
+    // --- TAB 3: SHADOWING ---
+    simShadowing: function() {
+        const sigma = parseFloat(document.getElementById('sl-sigma').value);
+        this.shadowPoints = [];
+        // Generate 50 points
+        for(let i=0; i<50; i++) {
+            // Random distance 10m to 1000m
+            const d = 10 + Math.random() * 990;
+            // Gaussian Noise (Box-Muller transform)
+            const u = 1 - Math.random(); 
+            const v = Math.random();
+            const z = Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+            const noise = z * sigma;
+            this.shadowPoints.push({d, noise});
+        }
+        this.drawShadowing();
+    },
+
+    drawShadowing: function() {
+        const cv = document.getElementById('cv-sh');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+        const gamma = parseFloat(document.getElementById('sl-gamma').value);
+
+        ctx.clearRect(0,0,w,h);
+
+        // Plot: Log Dist vs Power dB
+        // Ref: d0 = 10m, P(d0) = -30 dBm
+        const d0 = 10;
+        const P0 = -30;
+        
+        const mapX = (d) => 60 + (Math.log10(d) - 1) / 2 * (w - 80); // 10m(1) to 1000m(3)
+        const mapY = (p) => 20 + ((-p - 20) / 140) * (h - 60); // -20 to -160 range
+
+        // Grid
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        [10, 100, 1000].forEach(d => {
+            const x = mapX(d);
+            ctx.moveTo(x, 0); ctx.lineTo(x, h-40);
+            ctx.fillStyle = "#7f8c8d"; ctx.fillText(d+"m", x, h-25);
+        });
+        // Y Axis
+        [-40, -80, -120].forEach(db => {
+            const y = mapY(db);
+            ctx.moveTo(60, y); ctx.lineTo(w, y);
+            ctx.fillText(db+"dB", 20, y+4);
+        });
+        ctx.stroke();
+
+        // 1. Deterministic Model Line
+        // Pr = P0 - 10*gamma*log10(d/d0)
+        ctx.strokeStyle = "#27ae60"; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for(let d=10; d<=1000; d+=10) {
+            const pr = P0 - 10*gamma*Math.log10(d/d0);
+            const x = mapX(d);
+            const y = mapY(pr);
+            if (d===10) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.stroke();
+
+        // 2. Measurement Points
+        ctx.fillStyle = "rgba(52, 152, 219, 0.7)"; // Blue
+        this.shadowPoints.forEach(pt => {
+            const deterministic = P0 - 10 * gamma * Math.log10(pt.d / d0);
+            const val = deterministic + pt.noise;
+            const x = mapX(pt.d);
+            const y = mapY(val);
+            
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+        });
+    },
+
+    // --- TAB 4: OUTAGE ---
+    drawOutage: function() {
+        const cv = document.getElementById('cv-out');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const pAvg = parseFloat(document.getElementById('sl-pavg').value);
+        const pMin = parseFloat(document.getElementById('sl-pmin').value);
+        const sigma = parseFloat(document.getElementById('sl-outsig').value);
+
+        ctx.clearRect(0,0,w,h);
+
+        const centerX = w/2;
+        const scaleX = 15; // px per dB
+        const dbToPx = (db) => centerX + (db - pAvg) * scaleX;
+
+        // Draw PDF
+        // f(x) = (1 / sigma*sqrt(2pi)) * exp(...)
+        // We normalize the peak to a fixed pixel height for visualization
+        const maxPdfHeight = h * 0.7;
+        const peakVal = 1 / (sigma * Math.sqrt(2*Math.PI));
+        
+        ctx.beginPath();
+        for(let px = 0; px < w; px+=2) {
+            const dbVal = pAvg + (px - centerX) / scaleX;
+            // PDF Formula
+            const pdf = (1 / (sigma * Math.sqrt(2*Math.PI))) * Math.exp( -0.5 * ((dbVal - pAvg)/sigma)**2 );
+            
+            // Normalize for visual: Height relative to peak
+            const normalizedH = (pdf / peakVal) * maxPdfHeight;
+            const plotY = h - 40 - normalizedH;
+            
+            if(px===0) ctx.moveTo(px, plotY); else ctx.lineTo(px, plotY);
+        }
+        ctx.lineWidth = 2; ctx.strokeStyle = "#333"; ctx.stroke();
+
+        // Fill Outage Area (Left of Pmin)
+        const xMin = dbToPx(pMin);
+        ctx.fillStyle = "rgba(192, 57, 43, 0.4)"; // Red fade
+        ctx.beginPath();
+        ctx.moveTo(0, h-40);
+        for(let px = 0; px <= xMin; px+=2) {
+            if (px > w) break;
+            const dbVal = pAvg + (px - centerX) / scaleX;
+            const pdf = (1 / (sigma * Math.sqrt(2*Math.PI))) * Math.exp( -0.5 * ((dbVal - pAvg)/sigma)**2 );
+            const normalizedH = (pdf / peakVal) * maxPdfHeight;
+            const plotY = h - 40 - normalizedH;
+            ctx.lineTo(px, plotY);
+        }
+        ctx.lineTo(xMin, h-40);
+        ctx.fill();
+
+        // Indicators
+        // P_avg
+        ctx.strokeStyle = "#27ae60"; ctx.setLineDash([5,5]);
+        ctx.beginPath(); ctx.moveTo(centerX, h-40-maxPdfHeight); ctx.lineTo(centerX, h-40); ctx.stroke();
+        ctx.fillStyle = "#27ae60"; ctx.fillText("P_avg", centerX+5, h-40-maxPdfHeight);
+
+        // P_min
+        ctx.strokeStyle = "#c0392b"; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(xMin, 20); ctx.lineTo(xMin, h-40); ctx.stroke();
+        ctx.fillStyle = "#c0392b"; ctx.fillText("P_min", xMin-30, 30);
+
+        // Q-function Calculation
+        // P_out = Pr(X < Pmin). Z = (X - Pavg)/sigma. Pr(Z < (Pmin-Pavg)/sigma).
+        // Standard Q(z) is tail Pr(Z > z).
+        // Pr(Z < -x) = Q(x).
+        // Let x = (Pavg - Pmin)/sigma (The Fade Margin in sigmas).
+        const margin = (pAvg - pMin);
+        const z = margin / sigma; 
+        const qVal = this.qFuncRobust(z);
+        
+        document.getElementById('res-outage').innerText = (qVal*100).toFixed(2) + "%";
+    },
+
+    // Robust Q-Function using ERFC
+    qFuncRobust: function(x) {
+        // Q(x) = 0.5 * erfc(x / sqrt(2))
+        return 0.5 * this.erfc(x / Math.sqrt(2));
+    },
+
+    // Complementary Error Function
+    erfc: function(x) {
+        // Constants
+        const a1 =  0.254829592;
+        const a2 = -0.284496736;
+        const a3 =  1.421413741;
+        const a4 = -1.453152027;
+        const a5 =  1.061405429;
+        const p  =  0.3275911;
+
+        // Save the sign of x
+        let sign = 1;
+        if (x < 0) {
+            sign = -1;
+        }
+        x = Math.abs(x);
+
+        // A&S formula 7.1.26
+        const t = 1.0/(1.0 + p*x);
+        const y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-x*x);
+
+        return sign === 1 ? 1 - y : 1 + y; // erfc = 1 - erf
+    }
+};
+
+// Start Application
+app.init();
+</script>
+
+</body>
+</html>

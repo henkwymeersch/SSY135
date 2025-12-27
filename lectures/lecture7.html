@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 7: MIMO Communications (Revised)</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #2980b9;
+            --highlight: #e74c3c;
+            --success: #27ae60;
+            --bg: #f8f9fa;
+            --text: #2c3e50;
+            --border: #bdc3c7;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* HEADER */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0; font-size: 1.3rem; }
+        .subtitle { font-size: 0.9rem; opacity: 0.8; margin-top: 4px; }
+
+        /* NAV */
+        nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0 1rem;
+            display: flex;
+            gap: 2rem;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 1rem 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #7f8c8d;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { color: var(--primary); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-btn:focus { outline: none; background-color: #f1f1f1; }
+
+        /* MAIN CONTENT */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+        .container { max-width: 1200px; width: 100%; }
+
+        .panel { display: none; animation: fadein 0.3s; }
+        
+        /* GRID FIX: minmax(0, 1fr) prevents the chart from blowing out the width */
+        .panel.active { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 2rem; }
+        
+        @media (max-width: 900px) { .panel.active { grid-template-columns: 1fr; } }
+        @keyframes fadein { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CONTROLS SIDEBAR */
+        .controls {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+        .control-group { margin-bottom: 1.5rem; }
+        label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        
+        .badge {
+            background: var(--bg);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid var(--border);
+        }
+
+        /* PRESETS */
+        .preset-group { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 1rem; }
+        .preset-btn {
+            font-size: 0.75rem; padding: 4px 8px; background: #eee; border: 1px solid #ccc;
+            border-radius: 4px; cursor: pointer;
+        }
+        .preset-btn:hover { background: #ddd; }
+
+        /* RADIO BUTTONS */
+        .radio-group { display: flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+        .radio-opt {
+            flex: 1; text-align: center; padding: 8px; cursor: pointer; font-size: 0.9rem; background: #f9f9f9;
+        }
+        .radio-opt.active { background: var(--accent); color: white; }
+        .radio-opt:not(:last-child) { border-right: 1px solid var(--border); }
+
+        /* VISUALIZATION AREA */
+        .viz-area {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* CANVASES */
+        canvas {
+            width: 100%;
+            height: 300px; /* Reduced height for better fit */
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        
+        /* DUAL PLOT LAYOUT */
+        .dual-plot { display: flex; gap: 10px; height: 300px; }
+        /* FLEX FIX: min-width: 0 ensures canvases shrink if needed */
+        .dual-plot canvas { flex: 1; min-width: 0; height: 100%; }
+
+        /* LEGEND & METRICS */
+        .metrics-bar {
+            display: flex; justify-content: space-around; background: #f8f9fa;
+            padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #eee;
+        }
+        .metric { text-align: center; }
+        .metric-val { font-weight: bold; font-family: monospace; color: var(--accent); }
+        .metric-label { font-size: 0.75rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .legend { display: flex; gap: 20px; justify-content: center; margin-top: 10px; font-size: 0.85rem; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* THEORY BOX */
+        .theory-box {
+            margin-top: 1rem; padding: 1rem; background: #e8f4f8; border-left: 4px solid var(--accent);
+            font-size: 0.9rem; line-height: 1.5; display: none;
+        }
+        .toggle-theory {
+            background: none; border: none; color: var(--accent); text-decoration: underline;
+            cursor: pointer; font-size: 0.85rem; padding: 0; margin-top: 5px;
+        }
+        
+        /* MATHJAX OVERRIDES */
+        mjx-container { font-size: 1.1em !important; }
+
+        /* ACCESSIBILITY FOCUS */
+        *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    </style>
+<script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Lecture 7: MIMO Communications</h1>
+        <div class="subtitle">Spatial Multiplexing, Detection & Capacity</div>
+    </div>
+    <div style="text-align: right; font-size: 0.8rem;">SSY135 Interactive<br>v2.2 (Fixed Layout)</div>
+</header>
+
+<nav aria-label="Module Navigation">
+    <button class="tab-btn active" onclick="app.setTab('detect')" id="btn-detect">1. Detection (ZF/MMSE)</button>
+    <button class="tab-btn" onclick="app.setTab('svd')" id="btn-svd">2. SVD & Precoding</button>
+    <button class="tab-btn" onclick="app.setTab('cap')" id="btn-cap">3. Waterfilling</button>
+    <button class="tab-btn" onclick="app.setTab('fund')" id="btn-fund">4. Fundamentals</button>
+</nav>
+
+<main>
+    <div class="container">
+
+        <section id="tab-detect" class="panel active" aria-labelledby="btn-detect">
+            <div class="controls">
+                <h3>MIMO Detection</h3>
+                <p style="font-size:0.9rem; color:#666;">Recovering simultaneous streams. Watch how high correlation breaks Zero Forcing.</p>
+                
+                <div class="preset-group">
+                    <strong>Presets:</strong>
+                    <button class="preset-btn" onclick="app.setDetectPreset('ideal')">Ideal</button>
+                    <button class="preset-btn" onclick="app.setDetectPreset('hard')">High Corr</button>
+                    <button class="preset-btn" onclick="app.setDetectPreset('noise')">Low SNR</button>
+                </div>
+
+                <div class="control-group">
+                    <label>SNR ($E_s/N_0$) <span id="val-snr" class="badge">20 dB</span></label>
+                    <input type="range" id="sl-snr" min="0" max="40" step="1" value="20">
+                </div>
+                
+                <div class="control-group">
+                    <label>Channel Correlation ($\rho$) <span id="val-corr" class="badge">0.0</span></label>
+                    <input type="range" id="sl-corr" min="0" max="0.99" step="0.01" value="0">
+                    <div style="font-size:0.8rem; color:#e74c3c; margin-top:2px;" id="corr-warn"></div>
+                </div>
+
+                <div class="control-group">
+                    <label>Detector Strategy</label>
+                    <div class="radio-group" role="radiogroup">
+                        <div id="opt-zf" class="radio-opt active" onclick="app.setDetector('zf')" role="radio" aria-checked="true" tabindex="0">Zero Forcing</div>
+                        <div id="opt-mmse" class="radio-opt" onclick="app.setDetector('mmse')" role="radio" aria-checked="false" tabindex="0">MMSE</div>
+                    </div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-detect')">Show/Hide Theory</button>
+                <div id="th-detect" class="theory-box">
+                    <strong>Model:</strong> $\mathbf{y} = \mathbf{H}\mathbf{x} + \mathbf{n}$<br>
+                    <strong>ZF:</strong> $\mathbf{W} = (\mathbf{H}^H\mathbf{H})^{-1}\mathbf{H}^H$. Completely removes interference but amplifies noise by factor $1/\lambda_{min}^2$.<br>
+                    <strong>MMSE:</strong> $\mathbf{W} = (\mathbf{H}^H\mathbf{H} + N_0\mathbf{I})^{-1}\mathbf{H}^H$. Balances interference suppression with noise limitation.
+                </div>
+            </div>
+
+            <div class="viz-area">
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <div class="metric-label">Condition Number ($\kappa$)</div>
+                        <div class="metric-val" id="met-cond">-</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Error Rate (BER)</div>
+                        <div class="metric-val" id="met-ber">-</div>
+                    </div>
+                </div>
+
+                <div class="dual-plot">
+                    <canvas id="cv-det-1" aria-label="Constellation Plot Stream 1"></canvas>
+                    <canvas id="cv-det-2" aria-label="Constellation Plot Stream 2"></canvas>
+                </div>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#bdc3c7"></span> Transmitted</div>
+                    <div class="legend-item"><span class="dot" style="background:#e74c3c"></span> Noisy Rx</div>
+                    <div class="legend-item"><span class="dot" style="background:#27ae60"></span> Estimated</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-svd" class="panel" aria-labelledby="btn-svd">
+            <div class="controls">
+                <h3>Parallel Decomposition</h3>
+                <p style="font-size:0.9rem; color:#666;">SVD turns a coupled channel matrix into independent parallel channels (Eigenmodes).</p>
+
+                <div class="control-group">
+                    <button style="width:100%; padding:8px; cursor:pointer;" onclick="app.randSVD()">Generate Random Channel H</button>
+                </div>
+
+                <div class="control-group">
+                    <label>Transmission Mode</label>
+                    <div class="radio-group">
+                        <div id="opt-raw" class="radio-opt active" onclick="app.setSvdMode('raw')">Raw (Coupled)</div>
+                        <div id="opt-prec" class="radio-opt" onclick="app.setSvdMode('prec')">Precoded (SVD)</div>
+                    </div>
+                </div>
+
+                <div style="background:#f1f1f1; padding:10px; border-radius:4px; font-family:monospace; font-size:0.85rem; margin-top:10px;">
+                    <div>Singular Values (Gains):</div>
+                    <div style="font-weight:bold; color:var(--accent);" id="svd-vals"></div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-svd')">Show/Hide Theory</button>
+                <div id="th-svd" class="theory-box">
+                    <strong>Decomposition:</strong> $\mathbf{H} = \mathbf{U}\mathbf{\Sigma}\mathbf{V}^H$.<br>
+                    <strong>Precoding:</strong> Transmit $\mathbf{x}' = \mathbf{V}\mathbf{x}$.<br>
+                    <strong>Shaping:</strong> Filter $\mathbf{y}' = \mathbf{U}^H\mathbf{y}$.<br>
+                    <strong>Result:</strong> $\mathbf{y}' = \mathbf{\Sigma}\mathbf{x}' + \mathbf{n}$.<br>
+                    Stream $i$ travels on gain $\sigma_i$ without interference.
+                </div>
+            </div>
+
+            <div class="viz-area">
+                <canvas id="cv-svd" aria-label="Vector space showing signal alignment"></canvas>
+                <div style="text-align:center; margin-top:10px; font-size:0.9rem; color:#555;">
+                    Visualizing 2D Signal Space (Stream 1 vs Stream 2)
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-cap" class="panel" aria-labelledby="btn-cap">
+            <div class="controls">
+                <h3>Capacity & Waterfilling</h3>
+                <p style="font-size:0.9rem; color:#666;">Optimal power allocation maximizes sum-rate. Don't waste power on bad channels.</p>
+
+                <div class="control-group">
+                    <label>Total Power ($P_{tot}$) <span id="val-pow" class="badge">10</span></label>
+                    <input type="range" id="sl-pow" min="1" max="20" step="1" value="10">
+                </div>
+
+                <div class="control-group">
+                    <label>Channel 1 Strength ($\sigma_1$) <span id="val-sig1" class="badge">1.5</span></label>
+                    <input type="range" id="sl-sig1" min="0.1" max="2.0" step="0.1" value="1.5">
+                </div>
+
+                <div class="control-group">
+                    <label>Channel 2 Strength ($\sigma_2$) <span id="val-sig2" class="badge">0.5</span></label>
+                    <input type="range" id="sl-sig2" min="0.1" max="2.0" step="0.1" value="0.5">
+                </div>
+
+                <div class="control-group">
+                    <label>Strategy</label>
+                    <div class="radio-group">
+                        <div id="opt-uni" class="radio-opt" onclick="app.setAlloc('uniform')">Uniform</div>
+                        <div id="opt-wat" class="radio-opt active" onclick="app.setAlloc('water')">Waterfilling</div>
+                    </div>
+                </div>
+
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <div class="metric-label">Spectral Efficiency</div>
+                        <div class="metric-val"><span id="val-cap">0.0</span> <small>bps/Hz</small></div>
+                    </div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-cap')">Show/Hide Theory</button>
+                <div id="th-cap" class="theory-box">
+                    <strong>Problem:</strong> Maximize $\sum \log_2(1 + P_i \sigma_i^2)$.<br>
+                    <strong>Solution:</strong> $P_i = (\mu - \frac{N_0}{\sigma_i^2})^+$.<br>
+                    Channels where noise floor $1/\sigma^2 > \mu$ get zero power.
+                </div>
+            </div>
+
+            <div class="viz-area">
+                <canvas id="cv-cap" aria-label="Waterfilling Power Allocation Chart"></canvas>
+            </div>
+        </section>
+
+        <section id="tab-fund" class="panel" aria-labelledby="btn-fund">
+            <div class="controls">
+                <h3>MIMO Fundamentals</h3>
+                <p style="font-size:0.9rem; color:#666;">Understand the scaling laws. More antennas = Linear increase in capacity (Multiplexing Gain).</p>
+
+                <div class="control-group">
+                    <label>Tx Antennas ($M_T$) <span id="val-mt" class="badge">4</span></label>
+                    <input type="range" id="sl-mt" min="1" max="8" step="1" value="4">
+                </div>
+                <div class="control-group">
+                    <label>Rx Antennas ($M_R$) <span id="val-mr" class="badge">4</span></label>
+                    <input type="range" id="sl-mr" min="1" max="8" step="1" value="4">
+                </div>
+                
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <div class="metric-label">Multiplexing Gain</div>
+                        <div class="metric-val" id="met-dof">min(4,4) = 4</div>
+                    </div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-fund')">Show/Hide Theory</button>
+                <div id="th-fund" class="theory-box">
+                    <strong>Capacity Approx:</strong> at high SNR, $C \approx \min(M_T, M_R) \times \log_2(\text{SNR})$.<br>
+                    Degrees of Freedom (DoF) = $\min(M_T, M_R)$.<br>
+                    Every 3dB SNR increase adds DoF bits/s/Hz.
+                </div>
+            </div>
+            <div class="viz-area">
+                <canvas id="cv-fund" aria-label="Capacity vs SNR curves"></canvas>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+<script>
+/**
+ * Complex Number Utility for robust math
+ */
+const C = {
+    add: (a, b) => ({ r: a.r + b.r, i: a.i + b.i }),
+    sub: (a, b) => ({ r: a.r - b.r, i: a.i - b.i }),
+    mul: (a, b) => ({ r: a.r * b.r - a.i * b.i, i: a.r * b.i + a.i * b.r }),
+    div: (a, s) => ({ r: a.r / s, i: a.i / s }), // divide by scalar
+    mag: (a) => Math.sqrt(a.r*a.r + a.i*a.i),
+    conj: (a) => ({ r: a.r, i: -a.i }),
+    rand: () => ({ r: randn(), i: randn() }),
+    zero: () => ({ r: 0, i: 0 })
+};
+
+// Gaussian Random Helper
+function randn() {
+    let u = 0, v = 0;
+    while(u === 0) u = Math.random();
+    while(v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+// Debounce Helper
+function debounce(func, timeout = 20){
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+  };
+}
+
+const app = {
+    tab: 'detect',
+    
+    // Tab 1 State
+    snr: 20,
+    corr: 0,
+    detector: 'zf',
+    
+    // Tab 2 State
+    H_svd: null,
+    svdMode: 'raw',
+    
+    // Tab 3 State
+    pow: 10,
+    sig1: 1.5,
+    sig2: 0.5,
+    alloc: 'water',
+
+    // Tab 4 State
+    mt: 4,
+    mr: 4,
+
+    init() {
+        this.bindEvents();
+        this.randSVD(); // Init H for tab 2
+        this.updateAll();
+        
+        // Handle Resize
+        window.addEventListener('resize', debounce(() => this.updateAll(), 100));
+    },
+
+    bindEvents() {
+        // Sliders with debounce
+        const updateDet = debounce(() => this.updateDetect(), 15);
+        document.getElementById('sl-snr').oninput = updateDet;
+        document.getElementById('sl-corr').oninput = updateDet;
+
+        const updateCap = debounce(() => this.updateCapacity(), 15);
+        document.getElementById('sl-pow').oninput = updateCap;
+        document.getElementById('sl-sig1').oninput = updateCap;
+        document.getElementById('sl-sig2').oninput = updateCap;
+
+        const updateFund = debounce(() => this.updateFundamentals(), 15);
+        document.getElementById('sl-mt').oninput = updateFund;
+        document.getElementById('sl-mr').oninput = updateFund;
+    },
+
+    setTab(id) {
+        this.tab = id;
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('tab-'+id).classList.add('active');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-'+id).classList.add('active');
+        
+        // Render current tab immediately
+        if(id === 'detect') this.updateDetect();
+        else if(id === 'svd') this.updateSVD();
+        else if(id === 'cap') this.updateCapacity();
+        else if(id === 'fund') this.updateFundamentals();
+    },
+
+    toggle(id) {
+        const el = document.getElementById(id);
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    },
+
+    updateAll() {
+        this.updateDetect();
+        this.updateSVD();
+        this.updateCapacity();
+        this.updateFundamentals();
+    },
+
+    // ==========================================
+    // TAB 1: DETECTION
+    // ==========================================
+    setDetectPreset(type) {
+        if(type === 'ideal') {
+            document.getElementById('sl-snr').value = 25;
+            document.getElementById('sl-corr').value = 0;
+        } else if (type === 'hard') {
+            document.getElementById('sl-snr').value = 30;
+            document.getElementById('sl-corr').value = 0.95;
+        } else if (type === 'noise') {
+            document.getElementById('sl-snr').value = 5;
+            document.getElementById('sl-corr').value = 0;
+        }
+        this.updateDetect();
+    },
+
+    setDetector(type) {
+        this.detector = type;
+        document.querySelectorAll('#tab-detect .radio-opt').forEach(el => el.classList.remove('active'));
+        document.getElementById('opt-'+type).classList.add('active');
+        this.updateDetect();
+    },
+
+    updateDetect() {
+        if(this.tab !== 'detect') return;
+
+        // Inputs
+        this.snr = parseFloat(document.getElementById('sl-snr').value);
+        this.corr = parseFloat(document.getElementById('sl-corr').value);
+        
+        document.getElementById('val-snr').innerText = this.snr + " dB";
+        document.getElementById('val-corr').innerText = this.corr;
+        
+        // Condition Number Warning
+        const msg = document.getElementById('corr-warn');
+        if(this.corr > 0.9) msg.innerText = "Warning: Channel Ill-Conditioned!";
+        else msg.innerText = "";
+
+        // Channel Matrix H Construction (Complex 2x2)
+        // H = [1, rho; rho, 1] scaled to have norm
+        const h11 = {r:1, i:0}, h12 = {r:this.corr, i:0};
+        const h21 = {r:this.corr, i:0}, h22 = {r:1, i:0};
+        
+        // Calculate Condition Number
+        // Singular values of [[1, r], [r, 1]] are 1+r and 1-r
+        const s1 = 1 + this.corr;
+        const s2 = 1 - this.corr; // can be 0 if corr=1
+        const cond = s2 < 1e-9 ? 9999 : s1/s2;
+        
+        document.getElementById('met-cond').innerText = cond > 100 ? "> 100" : cond.toFixed(1);
+        document.getElementById('met-cond').style.color = cond > 10 ? '#e74c3c' : '#27ae60';
+
+        // Noise
+        const noisePwr = Math.pow(10, -this.snr/10);
+        const noiseStd = Math.sqrt(noisePwr/2); // per dimension
+
+        // Compute Inverse / Estimator W
+        let W = [[C.zero(), C.zero()], [C.zero(), C.zero()]]; // 2x2
+        
+        if(this.detector === 'zf') {
+            // Inv(H) = 1/det * [h22 -h12; -h21 h11]
+            const det = C.sub(C.mul(h11, h22), C.mul(h12, h21));
+            const detMag = C.mag(det);
+            
+            if(detMag < 1e-9) {
+                // Singularity fallback visual
+                W = [[{r:100, i:0}, {r:0,i:0}],[{r:0,i:0},{r:100,i:0}]]; 
+            } else {
+                W[0][0] = C.div(h22, det.r); // since det is real here
+                W[0][1] = C.div(C.mul(h12, {r:-1, i:0}), det.r);
+                W[1][0] = C.div(C.mul(h21, {r:-1, i:0}), det.r);
+                W[1][1] = C.div(h11, det.r);
+            }
+        } else {
+            // MMSE: (H'H + N0*I)^-1 H'
+            // For this symmetric real H: 
+            // A = H^2 + N0*I
+            const n0 = noisePwr;
+            const term1 = 1 + this.corr*this.corr + n0;
+            const term2 = 2*this.corr;
+            const detA = term1*term1 - term2*term2;
+            // Guard detA (always > 0 unless SNR infinite and rho=0, safe)
+            if(detA < 1e-9) return;
+            
+            // InvA * H calculation
+            // W = [ (a-b*rho)/detA, (a*rho-b)/detA; ... symmetric ]
+            const w1 = (term1 - term2*this.corr)/detA;
+            const w2 = (term1*this.corr - term2)/detA;
+            
+            W[0][0] = {r:w1, i:0}; W[0][1] = {r:w2, i:0};
+            W[1][0] = {r:w2, i:0}; W[1][1] = {r:w1, i:0};
+        }
+
+        // Draw Two Plots
+        this.drawConstellation('cv-det-1', 0, W, noiseStd, h11, h12, h21, h22, "Stream 1");
+        this.drawConstellation('cv-det-2', 1, W, noiseStd, h11, h12, h21, h22, "Stream 2");
+    },
+
+    drawConstellation(cvId, streamIdx, W, nStd, h11, h12, h21, h22, label) {
+        const cv = document.getElementById(cvId);
+        const ctx = cv.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = cv.getBoundingClientRect();
+        
+        // Ensure rect has values (handle hidden/collapsed state)
+        if (rect.width === 0) return;
+
+        cv.width = rect.width * dpr;
+        cv.height = rect.height * dpr;
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        const w = rect.width, h = rect.height;
+        
+        ctx.clearRect(0,0,w,h);
+        
+        // Axes
+        ctx.strokeStyle = "#eee"; ctx.beginPath();
+        ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
+        ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+        ctx.stroke();
+
+        const scale = w/6; // Slightly reduced scale to keep points in frame
+        const qpsk = [{r:1,i:1}, {r:1,i:-1}, {r:-1,i:1}, {r:-1,i:-1}];
+        
+        // Draw Targets
+        ctx.fillStyle = "#bdc3c7";
+        qpsk.forEach(p => {
+            ctx.beginPath(); ctx.arc(w/2 + p.r*scale, h/2 - p.i*scale, 4, 0, 2*Math.PI); ctx.fill();
+        });
+
+        // Simulation (100 points)
+        let errors = 0;
+        
+        for(let i=0; i<100; i++) {
+            // Random Tx
+            const x1 = qpsk[Math.floor(Math.random()*4)];
+            const x2 = qpsk[Math.floor(Math.random()*4)];
+            
+            // Noise
+            const n1 = {r: randn()*nStd, i: randn()*nStd};
+            const n2 = {r: randn()*nStd, i: randn()*nStd};
+            
+            // Rx: y = Hx + n
+            const term11 = C.mul(h11, x1);
+            const term12 = C.mul(h12, x2);
+            const y1 = C.add(C.add(term11, term12), n1);
+            
+            const term21 = C.mul(h21, x1);
+            const term22 = C.mul(h22, x2);
+            const y2 = C.add(C.add(term21, term22), n2);
+            
+            // Estimate x_hat = W y
+            let est, target;
+            
+            if(streamIdx === 0) {
+                const est1 = C.mul(W[0][0], y1);
+                const est2 = C.mul(W[0][1], y2);
+                est = C.add(est1, est2);
+                target = x1;
+                
+                // Draw Raw Rx y1 (Red) - only for stream 1 plot
+                if(i < 20) {
+                    ctx.fillStyle = "rgba(231, 76, 60, 0.3)";
+                    ctx.beginPath(); ctx.arc(w/2 + y1.r*scale, h/2 - y1.i*scale, 3, 0, 2*Math.PI); ctx.fill();
+                }
+            } else {
+                const est1 = C.mul(W[1][0], y1);
+                const est2 = C.mul(W[1][1], y2);
+                est = C.add(est1, est2);
+                target = x2;
+            }
+            
+            // Check Error
+            if(Math.sign(est.r) !== target.r || Math.sign(est.i) !== target.i) errors++;
+
+            // Draw Estimate
+            ctx.fillStyle = "rgba(39, 174, 96, 0.6)";
+            ctx.beginPath(); ctx.arc(w/2 + est.r*scale, h/2 - est.i*scale, 4, 0, 2*Math.PI); ctx.fill();
+        }
+
+        // Labels
+        ctx.fillStyle = "#333";
+        ctx.font = "bold 14px sans-serif";
+        ctx.fillText(label, 10, 20);
+    },
+
+
+    // ==========================================
+    // TAB 2: SVD
+    // ==========================================
+    randSVD() {
+        this.H_svd = {
+            a: Math.random()*2-1, b: Math.random()*2-1,
+            c: Math.random()*2-1, d: Math.random()*2-1
+        };
+        this.updateSVD();
+    },
+
+    setSvdMode(mode) {
+        this.svdMode = mode;
+        document.querySelectorAll('#tab-svd .radio-opt').forEach(el => el.classList.remove('active'));
+        document.getElementById(mode === 'raw' ? 'opt-raw' : 'opt-prec').classList.add('active');
+        this.updateSVD();
+    },
+
+    updateSVD() {
+        if(this.tab !== 'svd') return;
+        
+        // 2x2 Real SVD Calculation
+        const {a,b,c,d} = this.H_svd;
+        const E = (a+d)/2, F = (a-d)/2, G = (b+c)/2, H = (b-c)/2;
+        const Q = Math.sqrt(E*E + H*H);
+        const R = Math.sqrt(F*F + G*G);
+        const s1 = Q+R;
+        const s2 = Math.abs(Q-R);
+        
+        document.getElementById('svd-vals').innerText = `σ₁=${s1.toFixed(2)}, σ₂=${s2.toFixed(2)}`;
+
+        const cv = document.getElementById('cv-svd');
+        const ctx = cv.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = cv.getBoundingClientRect();
+        
+        if (rect.width === 0) return;
+
+        cv.width = rect.width * dpr; cv.height = rect.height * dpr;
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        const w = rect.width, h = rect.height;
+        const cx = w/2, cy = h/2, scale = 70;
+
+        ctx.clearRect(0,0,w,h);
+        
+        // Axes
+        ctx.strokeStyle = "#ddd"; ctx.beginPath();
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+
+        // Input Circle (Tx Energy)
+        ctx.strokeStyle = "#eee"; ctx.beginPath(); ctx.arc(cx, cy, scale, 0, 2*Math.PI); ctx.stroke();
+
+        // Grid Points
+        const pts = [];
+        for(let x=-1; x<=1; x+=0.25) {
+            for(let y=-1; y<=1; y+=0.25) {
+                if(x*x + y*y <= 1.05) pts.push({x,y});
+            }
+        }
+
+        pts.forEach(p => {
+            let ox, oy;
+            if(this.svdMode === 'prec') {
+                // Perfect alignment
+                ox = p.x * s1;
+                oy = p.y * s2;
+                ctx.fillStyle = "#27ae60";
+            } else {
+                // Mixing
+                ox = a*p.x + b*p.y;
+                oy = c*p.x + d*p.y;
+                ctx.fillStyle = "#e74c3c";
+            }
+            ctx.beginPath(); ctx.arc(cx + ox*scale, cy - oy*scale, 3, 0, 2*Math.PI); ctx.fill();
+        });
+
+        // Vectors
+        ctx.lineWidth = 3; ctx.strokeStyle = "#333";
+        ctx.beginPath();
+        if(this.svdMode === 'prec') {
+            ctx.moveTo(cx, cy); ctx.lineTo(cx + s1*scale, cy);
+            ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - s2*scale);
+        } else {
+            ctx.moveTo(cx, cy); ctx.lineTo(cx + a*scale, cy - c*scale);
+            ctx.moveTo(cx, cy); ctx.lineTo(cx + b*scale, cy - d*scale);
+        }
+        ctx.stroke();
+    },
+
+    // ==========================================
+    // TAB 3: WATERFILLING
+    // ==========================================
+    setAlloc(mode) {
+        this.alloc = mode;
+        document.querySelectorAll('#tab-cap .radio-opt').forEach(el => el.classList.remove('active'));
+        document.getElementById(mode === 'uniform' ? 'opt-uni' : 'opt-wat').classList.add('active');
+        this.updateCapacity();
+    },
+
+    updateCapacity() {
+        if(this.tab !== 'cap') return;
+
+        // Inputs
+        this.pow = parseFloat(document.getElementById('sl-pow').value);
+        this.sig1 = parseFloat(document.getElementById('sl-sig1').value);
+        this.sig2 = parseFloat(document.getElementById('sl-sig2').value);
+        
+        document.getElementById('val-pow').innerText = this.pow;
+        document.getElementById('val-sig1').innerText = this.sig1;
+        document.getElementById('val-sig2').innerText = this.sig2;
+
+        const g1 = Math.max(0.001, this.sig1*this.sig1);
+        const g2 = Math.max(0.001, this.sig2*this.sig2);
+        const n1 = 1/g1;
+        const n2 = 1/g2;
+
+        let p1=0, p2=0;
+
+        if(this.alloc === 'uniform') {
+            p1 = this.pow/2; p2 = this.pow/2;
+        } else {
+            // Robust Waterfilling
+            const nMin = Math.min(n1, n2);
+            const nMax = Math.max(n1, n2);
+            let mu = (this.pow + n1 + n2) / 2;
+            
+            if(mu < nMax) {
+                // Drop weak channel
+                mu = this.pow + nMin;
+                if(n1 < n2) { p1 = this.pow; p2 = 0; }
+                else { p1 = 0; p2 = this.pow; }
+            } else {
+                p1 = mu - n1;
+                p2 = mu - n2;
+            }
+        }
+
+        const c1 = Math.log2(1 + p1*g1);
+        const c2 = Math.log2(1 + p2*g2);
+        document.getElementById('val-cap').innerText = (c1+c2).toFixed(2);
+
+        const cv = document.getElementById('cv-cap');
+        const ctx = cv.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = cv.getBoundingClientRect();
+        
+        if (rect.width === 0) return;
+
+        cv.width = rect.width * dpr; cv.height = rect.height * dpr;
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        const w = rect.width, h = rect.height;
+
+        ctx.clearRect(0,0,w,h);
+        
+        const maxH = this.pow + Math.max(n1, n2);
+        const scaleY = (h-50) / (maxH * 1.1);
+        const barW = w/4;
+        const baseY = h - 30;
+
+        this.drawBar(ctx, w/4 - barW/2, baseY, barW, scaleY, n1, p1, "Channel 1", this.sig1);
+        this.drawBar(ctx, 3*w/4 - barW/2, baseY, barW, scaleY, n2, p2, "Channel 2", this.sig2);
+
+        if(this.alloc === 'water' && p1>0 && p2>0) {
+            const y = baseY - (n1+p1)*scaleY;
+            ctx.strokeStyle = "#2980b9"; ctx.setLineDash([5,5]); ctx.lineWidth=2;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = "#2980b9"; ctx.fillText("Water Level (μ)", w/2-30, y-5);
+        }
+    },
+
+    drawBar(ctx, x, y, w, scale, noise, power, label, sigma) {
+        const hN = noise * scale;
+        const hP = power * scale;
+        
+        // Noise
+        ctx.fillStyle = "#bdc3c7";
+        ctx.fillRect(x, y - hN, w, hN);
+        ctx.fillStyle = "#fff"; ctx.font = "12px monospace";
+        if(hN > 15) ctx.fillText("1/σ²", x+w/2-10, y - hN/2 + 4);
+
+        // Power
+        if(power > 0.01) {
+            ctx.fillStyle = "#3498db";
+            ctx.fillRect(x, y - hN - hP, w, hP);
+            ctx.fillStyle = "#fff";
+            if(hP > 15) ctx.fillText(`P=${power.toFixed(1)}`, x+w/2-15, y - hN - hP/2 + 4);
+        } else {
+            ctx.fillStyle = "#e74c3c";
+            ctx.font = "11px sans-serif";
+            ctx.fillText("OFF", x + w/2 - 10, y - hN - 10);
+        }
+
+        ctx.fillStyle = "#333"; ctx.font = "12px sans-serif";
+        ctx.fillText(label, x+w/2-25, y+20);
+    },
+
+    // ==========================================
+    // TAB 4: FUNDAMENTALS
+    // ==========================================
+    updateFundamentals() {
+        if(this.tab !== 'fund') return;
+        
+        this.mt = parseInt(document.getElementById('sl-mt').value);
+        this.mr = parseInt(document.getElementById('sl-mr').value);
+        
+        document.getElementById('val-mt').innerText = this.mt;
+        document.getElementById('val-mr').innerText = this.mr;
+        document.getElementById('met-dof').innerText = Math.min(this.mt, this.mr);
+
+        const cv = document.getElementById('cv-fund');
+        const ctx = cv.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = cv.getBoundingClientRect();
+        
+        if (rect.width === 0) return;
+
+        cv.width = rect.width * dpr; cv.height = rect.height * dpr;
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        const w = rect.width, h = rect.height;
+
+        ctx.clearRect(0,0,w,h);
+        const pad = 40;
+        
+        // Grid
+        ctx.beginPath(); ctx.strokeStyle = "#eee";
+        ctx.moveTo(pad, h-pad); ctx.lineTo(w-pad, h-pad);
+        ctx.moveTo(pad, h-pad); ctx.lineTo(pad, pad);
+        ctx.stroke();
+
+        const curves = [
+            { label: "SISO (1x1)", mt: 1, mr: 1, color: "#bdc3c7" },
+            { label: `MIMO (${this.mt}x${this.mr})`, mt: this.mt, mr: this.mr, color: "#e74c3c", width: 3 }
+        ];
+
+        curves.forEach(c => {
+            ctx.beginPath();
+            ctx.strokeStyle = c.color;
+            ctx.lineWidth = c.width || 2;
+            const minAnt = Math.min(c.mt, c.mr);
+            
+            for(let x=0; x<=w-2*pad; x+=5) {
+                const snrDb = x / (w-2*pad) * 30;
+                const snrLin = Math.pow(10, snrDb/10);
+                const cap = minAnt * Math.log2(1 + snrLin); 
+                const y = (h-pad) - (cap / 100) * (h-2*pad);
+                if(x===0) ctx.moveTo(pad+x, y); else ctx.lineTo(pad+x, y);
+            }
+            ctx.stroke();
+            
+            ctx.fillStyle = c.color;
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText(c.label, w-pad-100, (h-pad) - (minAnt * Math.log2(1 + 1000) / 100) * (h-2*pad));
+        });
+        
+        ctx.fillStyle = "#333";
+        ctx.fillText("SNR (dB)", w/2, h-10);
+        ctx.save(); ctx.translate(15, h/2); ctx.rotate(-Math.PI/2);
+        ctx.fillText("Capacity (bps/Hz)", 0,0); ctx.restore();
+    }
+};
+
+window.addEventListener('DOMContentLoaded', () => { app.init(); });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wideband Channels - Interactive Lecture 4</title>
+    <style>
+        :root {
+            /* Lecture Series Palette */
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --light: #ecf0f1;
+            --text: #333;
+            --border: #bdc3c7;
+            --success: #27ae60;
+            --danger: #c0392b;
+            --warning: #f39c12;
+            
+            /* Colorblind Safe Regime Colors */
+            --regime-slow: #2980b9; /* Blue */
+            --regime-fast: #d35400; /* Orange */
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .subtitle { font-size: 0.9rem; opacity: 0.8; }
+
+        /* Navigation */
+        .tab-nav {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { background-color: var(--light); }
+        .tab-btn:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+        .tab-btn.active {
+            border-bottom-color: var(--accent);
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* Content */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Controls Panel */
+        .panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid var(--light);
+        }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            display: block;
+        }
+        .value-badge {
+            background: var(--light);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--primary);
+            font-size: 0.85rem;
+        }
+
+        /* Visualization Area */
+        .viz-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 450px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            max-height: 400px;
+            background-color: #fff;
+        }
+
+        /* Theory Box */
+        .theory-box {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--warning);
+            font-size: 0.9rem;
+            display: none; 
+            line-height: 1.6;
+        }
+        .toggle-link {
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+        
+        /* Buttons */
+        .btn-group { display: flex; gap: 10px; margin-top: 1rem; }
+        .btn {
+            flex: 1;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn:hover { background-color: #2980b9; }
+        .btn-secondary { background: #95a5a6; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .btn-outline { 
+            background: transparent; 
+            border: 1px solid var(--border); 
+            color: var(--text); 
+            margin-top: 5px;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            width: auto;
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-layout { grid-template-columns: 1fr; }
+            .tab-btn { padding: 0.8rem 1rem; font-size: 0.9rem; }
+            header { padding: 1rem; }
+            .viz-container { min-height: 350px; }
+        }
+    </style>
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Wideband Channels</h1>
+        <div class="subtitle">Lecture 4: WSS-US, Delay Lines & Regimes</div>
+    </div>
+    <div style="text-align: right; font-size: 0.8rem;">
+        SSY135<br>Interactive Lab
+    </div>
+</header>
+
+<nav class="tab-nav" role="tablist">
+    <button id="btn-wssus" class="tab-btn active" role="tab" aria-selected="true" onclick="app.switchTab('wssus')">1. The WSS-US Channel</button>
+    <button id="btn-tdl" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('tdl')">2. Tapped Delay Line</button>
+    <button id="btn-regimes" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('regimes')">3. The 4 Regimes</button>
+    <button id="btn-duality" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('duality')">4. Frequency Duality</button>
+</nav>
+
+<div class="container">
+
+    <div id="wssus" class="tab-content active" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Visualizing c(&tau;, t)</h3>
+                <p class="subtitle">Channel Impulse Response over Time & Delay.</p>
+                
+                <div class="control-group">
+                    <label for="sl-dop">Doppler Spread ($B_D$) <span id="val-dop" class="value-badge">50 Hz</span></label>
+                    <input type="range" id="sl-dop" min="10" max="200" step="10" value="50">
+                </div>
+                <div class="control-group">
+                    <label for="sl-ds">RMS Delay Spread ($\sigma_\tau$) <span id="val-ds" class="value-badge">1.0 µs</span></label>
+                    <input type="range" id="sl-ds" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetWSSUS()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-wssus">
+                    <strong>WSS (Wide-Sense Stationary):</strong> Statistics don't change over time $t$. Visualized by the steady ripple speed.<br>
+                    <strong>US (Uncorrelated Scattering):</strong> Fading at delay $\tau_1$ is independent of $\tau_2$. Visualized by rows fading independently.<br>
+                    
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-wssus')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-wssus" role="img" aria-label="Heatmap showing time on x-axis and delay on y-axis. Colors represent signal power intensity. The pattern shifts left over time."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-wssus')">Download</button>
+                </div>
+                <div style="margin-top:10px; font-size:0.9rem; color:#555; text-align:center;">
+                    X-Axis: Time ($t$) &rarr; | Y-Axis: Delay ($\tau$) &uarr; <br>
+                    <span style="font-size:0.8rem">Color: Dark Purple (Low) &rarr; Orange &rarr; Yellow (High Power)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tdl" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Tapped Delay Line</h3>
+                <p class="subtitle">Discrete model of multipath.</p>
+                
+                <div class="control-group">
+                    <label for="sl-taps">Number of Taps (M+1) <span id="val-taps" class="value-badge">3</span></label>
+                    <input type="range" id="sl-taps" min="1" max="5" step="1" value="3">
+                </div>
+                <div class="control-group">
+                    <label for="sl-spacing">Tap Spacing ($\Delta\tau$) <span id="val-spacing" class="value-badge">1.0 µs</span></label>
+                    <input type="range" id="sl-spacing" min="0.5" max="3.0" step="0.5" value="1.0">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetTaps()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-tdl">
+                    <strong>TDL Model:</strong> $y(t) = \sum_{k=0}^{M} b_k(t) x(t - \tau_k)$.<br>
+                    Each tap $b_k(t)$ is a complex Gaussian process (Rayleigh fading) that fades independently.<br>
+                    Used in simulation (e.g., GSM, LTE models).
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-tdl')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-tdl" role="img" aria-label="Animated bar chart showing multiple channel taps varying in height independently over time."></canvas>
+                <div style="font-size:0.9rem; color:#555; text-align:center; margin-top:5px;">
+                    Bars represent $|b_k(t)|$ (Magnitude).<br>Note independence (US property).
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="regimes" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>The 4 Regimes</h3>
+                <p class="subtitle">Classify the channel based on system parameters.</p>
+                
+                <div class="control-group">
+                    <label for="sl-rate">Symbol Rate ($R_s$) <span id="val-rate" class="value-badge">100 kHz</span></label>
+                    <input type="range" id="sl-rate" min="1" max="10000" step="10" value="100">
+                    <small style="color:#666">Range: 1 kHz to 10 MHz</small>
+                </div>
+                <div class="control-group">
+                    <label for="sl-vel">Velocity ($v$) <span id="val-vel" class="value-badge">60 km/h</span></label>
+                    <input type="range" id="sl-vel" min="0" max="300" step="10" value="60">
+                </div>
+                <div class="control-group">
+                    <label for="sl-carrier">Carrier Freq ($f_c$) <span id="val-carrier" class="value-badge">2.0 GHz</span></label>
+                    <input type="range" id="sl-carrier" min="0.5" max="5.0" step="0.5" value="2.0">
+                </div>
+                <div class="control-group">
+                    <label for="sl-env">RMS Delay Spread ($\sigma_\tau$) <span id="val-env" class="value-badge">2 µs</span></label>
+                    <input type="range" id="sl-env" min="0.1" max="10" step="0.1" value="2.0">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetRegimes()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-regimes">
+                    <strong>Time Selectivity:</strong> $T_s \ll T_c$ (Slow) vs $T_s > T_c$ (Fast).<br>
+                    <strong>Freq Selectivity:</strong> $B_s \ll B_c$ (Flat) vs $B_s > B_c$ (Selective).<br>
+                    $T_c \approx 0.4/f_D$, $B_c \approx 1/(5\sigma_\tau)$.
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-regimes')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-regimes" role="img" aria-label="2D Scatter plot showing the 4 regimes of fading. A dot indicates the current system configuration."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-regimes')">Download</button>
+                </div>
+                <div style="font-size:1.0rem; margin-top:10px; padding: 10px; background:#f8f9fa; border-radius:4px;">
+                    <div style="font-weight:bold; color:var(--primary); margin-bottom:5px;">System State: <span id="res-state">Calculating...</span></div>
+                    <div style="font-size:0.85rem; color:#555; display:flex; justify-content:space-between;">
+                        <span>Ratio $T_s/T_c$: <strong id="res-r-time">-</strong></span>
+                        <span>Ratio $B_s/B_c$: <strong id="res-r-freq">-</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="duality" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Time-Frequency Duality</h3>
+                <p class="subtitle">Fourier relation: PDP $\leftrightarrow$ Freq Correlation.</p>
+                
+                <div class="control-group">
+                    <label for="sl-dual-ds">RMS Delay Spread ($\sigma_\tau$) <span id="val-dual-ds" class="value-badge">1.0 µs</span></label>
+                    <input type="range" id="sl-dual-ds" min="0.1" max="5.0" step="0.1" value="1.0">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetDuality()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-duality">
+                    <strong>Fourier Pair:</strong> $A_c(\Delta f) = \mathcal{F}\{ A_c(\tau) \}$.<br>
+                    <strong>Reciprocal Property:</strong> Large $\sigma_\tau$ (Wide PDP) &rarr; Small $B_c$ (Narrow Freq Correlation).<br>
+                    Narrow $B_c$ implies the channel changes quickly across frequency.
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-duality')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-duality" role="img" aria-label="Two plots side by side. Left: Power Delay Profile (Time). Right: Frequency Correlation Function (Frequency)."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-duality')">Download</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div style="max-width:1100px; margin: 2rem auto; border-top:1px solid #ddd; padding-top:1rem; color:#7f8c8d; font-size:0.9rem;">
+    <h4>References & Instructor Notes</h4>
+    <ul>
+        <li><strong>[1558] 4 Regimes:</strong> Lecture 4, Slide 5.</li>
+        <li><strong>[1653] WSS-US:</strong> Lecture 4, Slide 10.</li>
+        <li><strong>[1743] Tapped Delay Line:</strong> Lecture 4, Slide 13.</li>
+        <li><strong>[1812] Duality:</strong> Lecture 4, Slide 16 (The "Diamond" diagram).</li>
+    </ul>
+    <p><strong>Tip:</strong> In Tab 3, notice that increasing velocity moves the dot UP (towards Fast Fading), and increasing Symbol Rate moves it RIGHT (towards Wideband). Most modern cellular systems (LTE/5G) are in the Top-Right (Fast & Wideband) regime.</p>
+</div>
+
+<noscript>
+    <div style="padding: 2rem; text-align:center; color: red;">
+        JavaScript is required to view the interactive visualizations. Please enable JavaScript in your browser.
+    </div>
+</noscript>
+
+<script>
+const app = {
+    currentTab: 'wssus',
+    animating: false,
+    frameRequest: null,
+    
+    // State variables
+    time: 0,
+    wssusCols: [],
+    tapsData: [],
+
+    init: function() {
+        this.setupListeners();
+        this.wssusCols = new Array(50).fill(0).map(() => new Array(40).fill(0));
+        
+        // Start on Tab 1
+        this.switchTab('wssus');
+        
+        // Debounced Resize
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => this.redrawActiveTab(), 100);
+        });
+    },
+
+    setupListeners: function() {
+        // Tab 1
+        this.bindSlider('sl-dop', 'val-dop', ' Hz', null);
+        this.bindSlider('sl-ds', 'val-ds', ' µs', null);
+
+        // Tab 2
+        this.bindSlider('sl-taps', 'val-taps', '', () => this.initTaps(true)); // Pass true to use slider value
+        this.bindSlider('sl-spacing', 'val-spacing', ' µs', null);
+        this.initTaps(true);
+
+        // Tab 3
+        const regUpdate = () => this.drawRegimes();
+        this.bindSlider('sl-rate', 'val-rate', ' kHz', regUpdate);
+        this.bindSlider('sl-vel', 'val-vel', ' km/h', regUpdate);
+        this.bindSlider('sl-carrier', 'val-carrier', ' GHz', regUpdate);
+        this.bindSlider('sl-env', 'val-env', ' µs', regUpdate);
+
+        // Tab 4
+        this.bindSlider('sl-dual-ds', 'val-dual-ds', ' µs', () => this.drawDuality());
+    },
+
+    bindSlider: function(id, dispId, unit, callback) {
+        const el = document.getElementById(id);
+        const disp = document.getElementById(dispId);
+        if(!el) return;
+        
+        el.addEventListener('input', () => {
+            let val = parseFloat(el.value);
+            if (unit === ' kHz' && val >= 1000) {
+                disp.textContent = (val/1000).toFixed(1) + ' MHz';
+            } else {
+                disp.textContent = val + unit;
+            }
+            if(callback) callback();
+        });
+    },
+
+    // --- TAB MANAGEMENT ---
+    switchTab: function(tabId) {
+        this.currentTab = tabId;
+        
+        // UI Logic
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+        const btn = document.getElementById('btn-'+tabId);
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+
+        // Animation Control
+        if(tabId === 'wssus' || tabId === 'tdl') {
+            this.startAnimation();
+        } else {
+            this.stopAnimation();
+            this.redrawActiveTab();
+        }
+    },
+
+    startAnimation: function() {
+        if(this.animating) return;
+        this.animating = true;
+        const loop = () => {
+            if(!this.animating) return;
+            if(this.currentTab === 'wssus') this.drawWSSUS();
+            if(this.currentTab === 'tdl') this.drawTDL();
+            this.frameRequest = requestAnimationFrame(loop);
+        };
+        this.frameRequest = requestAnimationFrame(loop);
+    },
+
+    stopAnimation: function() {
+        this.animating = false;
+        if(this.frameRequest) cancelAnimationFrame(this.frameRequest);
+    },
+
+    redrawActiveTab: function() {
+        if(this.currentTab === 'regimes') this.drawRegimes();
+        if(this.currentTab === 'duality') this.drawDuality();
+        // Tabs 1/2 handled by loop if active
+    },
+
+    // --- RESET FUNCTIONS ---
+    resetWSSUS: function() {
+        document.getElementById('sl-dop').value = 50;
+        document.getElementById('sl-ds').value = 1.0;
+        ['sl-dop', 'sl-ds'].forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
+    },
+    resetTaps: function() {
+        document.getElementById('sl-taps').value = 3;
+        document.getElementById('sl-spacing').value = 1.0;
+        this.initTaps(true);
+        // Force update of badges
+        document.getElementById('sl-taps').dispatchEvent(new Event('input'));
+        document.getElementById('sl-spacing').dispatchEvent(new Event('input'));
+    },
+    resetRegimes: function() {
+        document.getElementById('sl-rate').value = 100;
+        document.getElementById('sl-vel').value = 60;
+        document.getElementById('sl-carrier').value = 2.0;
+        document.getElementById('sl-env').value = 2.0;
+        ['sl-rate','sl-vel','sl-carrier','sl-env'].forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
+    },
+    resetDuality: function() {
+        document.getElementById('sl-dual-ds').value = 1.0;
+        document.getElementById('sl-dual-ds').dispatchEvent(new Event('input'));
+    },
+
+    // --- UTILS ---
+    toggle: function(id) {
+        const el = document.getElementById(id);
+        if(el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    },
+
+    resizeCanvas: function(canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (canvas.width !== rect.width * dpr || canvas.height !== 400 * dpr) {
+            canvas.width = rect.width * dpr;
+            canvas.height = 400 * dpr;
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        return { w: rect.width, h: 400, ctx: ctx };
+    },
+
+    downloadCanvas: function(id) {
+        const canvas = document.getElementById(id);
+        const link = document.createElement('a');
+        link.download = id + '.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    },
+
+    // --- PHYSICS HELPERS ---
+    // Simulates Jakes fading trace (Rayleigh)
+    // t: time, fd: doppler, N: num scatterers, seed: offset
+    jakesSample: function(t, fd, N=20, seed=0) {
+        let re = 0, im = 0;
+        for(let n=1; n<=N; n++) {
+            const alpha = (2*Math.PI*n - Math.PI) / (4*N);
+            const phi = (n * n) + seed; // Deterministic phase seed
+            const dop = 2 * Math.PI * fd * Math.cos(alpha) * t;
+            re += Math.cos(dop + phi);
+            im += Math.sin(dop + phi);
+        }
+        return Math.sqrt(re**2 + im**2) / Math.sqrt(N); // Normalized Magnitude
+    },
+
+    // --- TAB 1: WSS-US ---
+    drawWSSUS: function() {
+        const cv = document.getElementById('cv-wssus');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const fd = parseFloat(document.getElementById('sl-dop').value);
+        const ds = parseFloat(document.getElementById('sl-ds').value);
+
+        // Advance time
+        this.time += 0.005; // Base step
+
+        const numDelayBins = 40;
+        const numTimeBins = 50; 
+        const cellW = w / numTimeBins;
+        const cellH = h / numDelayBins;
+
+        const newCol = [];
+        for(let i=0; i<numDelayBins; i++) {
+            const tau = i * 0.2; 
+            // Average Power Envelope (Exponential PDP)
+            const envelope = Math.exp(-tau / Math.max(ds, 0.1));
+            
+            // Fast Fading (Jakes Model)
+            // Use different seed 'i' per delay to ensure Uncorrelated Scattering
+            const fading = this.jakesSample(this.time, fd, 10, i * 137);
+            
+            let pwr = envelope * fading;
+            pwr = Math.min(1, pwr);
+            newCol.push(pwr);
+        }
+
+        this.wssusCols.shift();
+        this.wssusCols.push(newCol);
+
+        ctx.clearRect(0,0,w,h);
+        for(let t=0; t<numTimeBins; t++) {
+            for(let d=0; d<numDelayBins; d++) {
+                const val = this.wssusCols[t][d] || 0;
+                // Heatmap: Magma-ish (Black -> Purple -> Orange -> Yellow)
+                // Map 0..1 to RGB
+                const r = Math.min(255, Math.floor(val * 350));
+                const g = Math.min(255, Math.floor(val * val * 255));
+                const b = Math.min(255, Math.floor(val * 100 + 50));
+                
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(t*cellW, h - (d+1)*cellH, cellW+1, cellH+1);
+            }
+        }
+
+        ctx.fillStyle = "white";
+        ctx.font = "12px sans-serif";
+        ctx.fillText("Time ->", 10, h-10);
+        ctx.save();
+        ctx.translate(10, 10);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText("Delay ->", -h/2, 0);
+        ctx.restore();
+    },
+
+    // --- TAB 2: TDL ---
+    initTaps: function(useSlider=false) {
+        let num = 3;
+        if (useSlider) {
+            num = parseInt(document.getElementById('sl-taps').value);
+        } else {
+            document.getElementById('sl-taps').value = 3;
+            document.getElementById('sl-spacing').value = 1.0;
+        }
+        
+        // Ensure array size matches
+        this.tapsData = new Array(num).fill(0).map((_, i) => ({
+            seed: Math.random() * 1000 // Unique seed for independence
+        }));
+    },
+
+    drawTDL: function() {
+        const cv = document.getElementById('cv-tdl');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+        
+        const num = parseInt(document.getElementById('sl-taps').value);
+        if (this.tapsData.length !== num) this.initTaps(true);
+
+        const spacing = parseFloat(document.getElementById('sl-spacing').value);
+        // Fixed Doppler for visualization speed consistency in TDL tab
+        const fd_viz = 20; 
+
+        // Update magnitudes
+        const magnitudes = this.tapsData.map((t, i) => {
+            const decay = Math.exp(-i * spacing / 2.0); 
+            // Use Jakes model for realistic Rayleigh fading
+            const fading = this.jakesSample(this.time, fd_viz, 20, t.seed);
+            return decay * fading;
+        });
+
+        ctx.clearRect(0,0,w,h);
+
+        const margin = 50;
+        const plotW = w - 2*margin;
+        const plotH = h - 2*margin;
+        const baseY = h - margin;
+
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(margin, baseY); ctx.lineTo(w-margin, baseY); 
+        ctx.stroke();
+
+        const gap = plotW / (num + 1);
+        
+        magnitudes.forEach((mag, i) => {
+            const x = margin + (i+1)*gap;
+            const height = Math.min(mag * plotH * 1.5, plotH); // Scale up a bit
+            
+            ctx.strokeStyle = "#3498db"; ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(x, baseY);
+            ctx.lineTo(x, baseY - height);
+            ctx.stroke();
+
+            ctx.fillStyle = "#2c3e50";
+            ctx.beginPath(); ctx.arc(x, baseY - height, 6, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = "#555";
+            ctx.fillText(`Tap ${i}`, x-15, baseY + 20);
+            ctx.fillText(`+${(i*spacing).toFixed(1)}µs`, x-25, baseY + 35);
+        });
+
+        ctx.fillStyle = "#2c3e50";
+        ctx.font = "14px sans-serif";
+        ctx.fillText("Independent Fading Taps (Magnitude)", w/2 - 100, 30);
+    },
+
+    // --- TAB 3: REGIMES ---
+    drawRegimes: function() {
+        const cv = document.getElementById('cv-regimes');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const Rs = parseFloat(document.getElementById('sl-rate').value) * 1000;
+        const v = parseFloat(document.getElementById('sl-vel').value) / 3.6;
+        const fc = parseFloat(document.getElementById('sl-carrier').value) * 1e9;
+        const ds = Math.max(parseFloat(document.getElementById('sl-env').value), 0.01) * 1e-6; // Clamp ds
+
+        const c = 3e8;
+        const lambda = c/fc;
+        const Ts = 1/Rs; 
+        const Bs = Rs;   
+
+        const fd = Math.max(v/lambda, 1e-4); // Clamp fd
+        const Tc = 0.4/fd;
+        const Bc = 1 / (5*ds);
+
+        const ratioTime = Ts / Tc; 
+        const ratioFreq = Bs / Bc; 
+
+        // Update Text Display
+        document.getElementById('res-r-time').innerText = ratioTime.toExponential(2);
+        document.getElementById('res-r-freq').innerText = ratioFreq.toExponential(2);
+
+        ctx.clearRect(0,0,w,h);
+        const cx = w/2;
+        const cy = h/2;
+
+        // Quadrants - Using Blue/Orange Patterns for Accessibility
+        
+        // Fast Fading (Top Half) - Orange
+        ctx.fillStyle = "rgba(211, 84, 0, 0.2)"; 
+        ctx.fillRect(0, 0, w, h/2);
+        
+        // Freq Selective (Right Half) - Striped Pattern Overlay
+        // Creating a pattern manually
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(w/2, 0, w/2, h);
+        ctx.clip();
+        ctx.strokeStyle = "rgba(0,0,0,0.1)";
+        ctx.lineWidth = 2;
+        for(let i=-h; i<w; i+=10) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i+h, h); ctx.stroke();
+        }
+        ctx.restore();
+
+        // Slow Fading (Bottom Half) - Blue
+        ctx.fillStyle = "rgba(41, 128, 185, 0.2)";
+        ctx.fillRect(0, h/2, w, h/2);
+
+        // Axes
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+        ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+        ctx.stroke();
+
+        // Labels
+        ctx.fillStyle = "#333"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("Slow Fading (Ts < Tc)", cx/2, h-10);
+        ctx.fillText("Fast Fading (Ts > Tc)", cx + cx/2, h-10);
+        
+        ctx.save(); ctx.translate(10, cy); ctx.rotate(-Math.PI/2);
+        ctx.textAlign = "center";
+        ctx.fillText("Flat Fading (Bs < Bc)", cx/2, 0);
+        ctx.fillText("Freq. Selective (Bs > Bc)", -cx/2, 0);
+        ctx.restore();
+        
+        // Grid Ticks (Log Scale)
+        ctx.fillStyle = "#777"; ctx.font = "10px monospace";
+        // X-Axis (Ratio Time) -3 to 3 log
+        // Center is 0 (10^0). 
+        ctx.fillText("10^-2", cx - (w/2)*(2/3), cy+15);
+        ctx.fillText("10^2", cx + (w/2)*(2/3), cy+15);
+        
+        // Y-Axis (Ratio Freq)
+        ctx.fillText("10^2", cx+5, cy - (h/2)*(2/3));
+        ctx.fillText("10^-2", cx+5, cy + (h/2)*(2/3));
+
+        // Plot Dot
+        const mapLog = (val) => {
+            const logVal = Math.log10(val);
+            return Math.max(-3, Math.min(3, logVal));
+        };
+
+        const px = cx + (mapLog(ratioTime) / 3) * (w/2 - 20);
+        const py = cy - (mapLog(ratioFreq) / 3) * (h/2 - 20);
+
+        ctx.beginPath();
+        ctx.arc(px, py, 8, 0, Math.PI*2);
+        ctx.fillStyle = "#2c3e50"; ctx.fill();
+        ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+
+        let stateStr = "";
+        stateStr += (ratioTime > 1) ? "Fast Fading" : "Slow Fading";
+        stateStr += " & ";
+        stateStr += (ratioFreq > 1) ? "Freq. Selective" : "Flat Fading";
+        
+        const el = document.getElementById('res-state');
+        el.textContent = stateStr;
+        el.style.color = (ratioTime > 1 || ratioFreq > 1) ? "#c0392b" : "#27ae60";
+    },
+
+    // --- TAB 4: DUALITY ---
+    drawDuality: function() {
+        const cv = document.getElementById('cv-duality');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const ds = parseFloat(document.getElementById('sl-dual-ds').value);
+
+        ctx.clearRect(0,0,w,h);
+        const w2 = w/2;
+        const margin = 40;
+        const plotH = h - 2*margin;
+        const maxTime = 10; 
+        
+        // Axes
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+        ctx.beginPath(); 
+        ctx.moveTo(margin, h-margin); ctx.lineTo(w2-margin, h-margin); // Left X
+        ctx.moveTo(margin, h-margin); ctx.lineTo(margin, margin); // Left Y
+        
+        const startX = w2 + margin;
+        const endX = w - margin;
+        ctx.moveTo(startX, h-margin); ctx.lineTo(endX, h-margin); // Right X
+        // Y Axis is centered for Correlation
+        ctx.moveTo(startX, margin); ctx.lineTo(startX, h-margin);
+        ctx.stroke();
+
+        // PDP (Time)
+        ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let px=0; px < (w2-2*margin); px++) {
+            const t = (px / (w2-2*margin)) * maxTime;
+            const val = Math.exp(-t/ds);
+            const py = (h-margin) - val*plotH;
+            if(px===0) ctx.moveTo(margin+px, py); else ctx.lineTo(margin+px, py);
+        }
+        ctx.stroke();
+
+        // Freq Correlation
+        // Lorentzian shape centered at 0
+        const maxFreq = 2.0; 
+        ctx.strokeStyle = "#3498db"; 
+        ctx.beginPath();
+        const plotW = endX - startX;
+        for(let px=0; px <= plotW; px++) {
+            // Map px to f: 0 -> 0, plotW -> 2MHz
+            const f = (px / plotW) * maxFreq; 
+            const val = 1 / Math.sqrt(1 + (2*Math.PI*f*ds)**2);
+            const py = (h-margin) - val*plotH;
+            if(px===0) ctx.moveTo(startX, (h-margin)-plotH); // Start at 1
+            ctx.lineTo(startX+px, py);
+        }
+        ctx.stroke();
+        
+        ctx.fillStyle = "#333"; ctx.textAlign="center";
+        ctx.fillText("Power Delay Profile (Time)", w2/2, margin - 10);
+        ctx.fillText("Correlation |Ac(\u0394f)|", startX + plotW/2, margin - 10);
+        ctx.fillText("\u0394f (MHz)", startX + plotW/2, h-10);
+        ctx.fillText("0", startX, h-10);
+    }
+};
+
+app.init();
+</script>
+
+</body>
+</html>

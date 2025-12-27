@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 6: OFDM & Multicarrier Modulation</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --light: #ecf0f1;
+            --text: #333;
+            --highlight: #e74c3c;
+            --success: #27ae60;
+            --warning: #f1c40f;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            margin: 0;
+            background: #f4f7f6;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0; font-size: 1.2rem; }
+        .subtitle { font-size: 0.8rem; opacity: 0.8; }
+
+        /* Navigation */
+        nav {
+            background: white;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 5px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            padding: 12px 16px; /* Larger touch target */
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: #7f8c8d;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-size: 1rem;
+        }
+        .tab-btn:hover, .tab-btn:focus { background: #f9f9f9; outline: none; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Panels */
+        .panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+        }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+
+        /* Controls */
+        .control-group { margin-bottom: 1.2rem; }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            height: 24px; /* Accessible touch target */
+        }
+        .badge {
+            background: var(--light);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        button.action-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: opacity 0.2s;
+        }
+        button.action-btn:hover { opacity: 0.9; }
+        button.action-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Visualization */
+        canvas {
+            width: 100%;
+            height: 300px;
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+
+        /* Theory Box */
+        .theory {
+            background: #f8f9fa;
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            display: none;
+            line-height: 1.5;
+        }
+        .toggle-theory {
+            color: var(--accent);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 8px;
+            display: inline-block;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        /* Indicators */
+        .status-pass { color: var(--success); font-weight: bold; }
+        .status-fail { color: var(--highlight); font-weight: bold; }
+        .status-warn { color: var(--warning); font-weight: bold; }
+
+        /* Instructor Notes */
+        .instructor-notes {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 2rem;
+            border-top: 1px solid #ddd;
+            padding-top: 1rem;
+        }
+    </style>
+<script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<noscript>
+    <div style="padding: 20px; background: #ffebee; color: #c62828; text-align: center;">
+        <strong>JavaScript is required:</strong> This interactive simulation requires JavaScript to function. Please enable it in your browser settings.
+    </div>
+</noscript>
+
+<header>
+    <div>
+        <h1>Wireless Comm - Lecture 6</h1>
+        <div class="subtitle">Multicarrier Modulation & OFDM</div>
+    </div>
+    <div style="font-size: 0.8rem; text-align: right;">SSY135<br>Interactive Lab</div>
+</header>
+
+<nav role="tablist">
+    <button id="btn-isi" class="tab-btn active" onclick="app.setTab('isi')" role="tab" aria-selected="true" aria-controls="tab-isi">1. The Problem (ISI)</button>
+    <button id="btn-matrix" class="tab-btn" onclick="app.setTab('matrix')" role="tab" aria-selected="false" aria-controls="tab-matrix">2. Matrix Magic</button>
+    <button id="btn-cp" class="tab-btn" onclick="app.setTab('cp')" role="tab" aria-selected="false" aria-controls="tab-cp">3. Cyclic Prefix</button>
+    <button id="btn-design" class="tab-btn" onclick="app.setTab('design')" role="tab" aria-selected="false" aria-controls="tab-design">4. System Design</button>
+    <button id="btn-papr" class="tab-btn" onclick="app.setTab('papr')" role="tab" aria-selected="false" aria-controls="tab-papr">5. PAPR</button>
+</nav>
+
+<main>
+
+    <div id="tab-isi" class="tab-content active" role="tabpanel" aria-labelledby="btn-isi">
+        <div class="panel">
+            <h3>Why Multicarrier? The ISI Problem</h3>
+            <p>On frequency-selective channels, high data rates (short symbols) cause symbols to bleed into neighbors.</p>
+
+            <div class="grid">
+                <div>
+                    <div class="control-group">
+                        <label for="sl-isi-rate">Symbol Rate ($1/T_s$) <span id="val-isi-rate" class="badge">1.0 MBd</span></label>
+                        <input type="range" id="sl-isi-rate" min="0.1" max="5" step="0.1" value="1" oninput="app.drawISI()" aria-label="Symbol Rate Slider">
+                    </div>
+                    <div class="control-group">
+                        <label for="sl-isi-delay">Channel Delay Spread ($\tau_{max}$) <span id="val-isi-delay" class="badge">1.0 µs</span></label>
+                        <input type="range" id="sl-isi-delay" min="0" max="4" step="0.1" value="1" oninput="app.drawISI()" aria-label="Delay Spread Slider">
+                    </div>
+                    <div class="theory-box">
+                        <button class="toggle-theory" onclick="app.toggle('th-isi')">Show/Hide Equations</button>
+                        <div id="th-isi" class="theory">
+                            <strong>Inter-Symbol Interference (ISI):</strong><br>
+                            Received signal: $y(t) = \sum x_k h(t - kT_s)$.<br>
+                            If $\tau_{max} > T_s$, the tail of symbol $k-1$ overlaps with symbol $k$.<br>
+                            Single-carrier equalizers for large $\tau_{max}$ are computationally expensive ($L^2$ or exponential complexity).
+                        </div>
+                    </div>
+                </div>
+                <canvas id="cv-isi" role="img" aria-label="Plot showing transmitted square pulses and received pulses smeared by delay spread."></canvas>
+            </div>
+            <p style="font-size:0.9rem; color:#666; margin-top:5px;">
+                <strong>Instruction:</strong> Increase the Symbol Rate. When the blue pulse width ($T_s$) becomes smaller than the green bar ($\tau_{max}$), the red received pulses overlap significantly (ISI).
+            </p>
+        </div>
+    </div>
+
+    <div id="tab-matrix" class="tab-content" role="tabpanel" aria-labelledby="btn-matrix">
+        <div class="panel">
+            <h3>Linear (Toeplitz) vs. Circular (Circulant)</h3>
+            <p>OFDM relies on the property that the DFT diagonalizes Circulant matrices. Standard physical channels are Linear.</p>
+
+            <div class="grid">
+                <div>
+                    <div class="control-group">
+                        <label>Convolution Mode</label>
+                        <div style="display:flex; gap:10px;">
+                            <button class="action-btn" onclick="app.setMatrixMode('linear')" id="btn-mx-lin">Linear (Time)</button>
+                            <button class="action-btn" onclick="app.setMatrixMode('circular')" id="btn-mx-circ">Circular (OFDM)</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="sl-mx-n">Matrix Size (N) <span id="val-mx-n" class="badge">8</span></label>
+                        <input type="range" id="sl-mx-n" min="4" max="16" step="1" value="8" oninput="app.drawMatrix()" aria-label="Matrix Size Slider">
+                    </div>
+                    <div class="theory-box">
+                        <button class="toggle-theory" onclick="app.toggle('th-mx')">Show/Hide Equations</button>
+                        <div id="th-mx" class="theory">
+                            <strong>Toeplitz (Linear):</strong> $y = H x$. Constant diagonals, but indices $i-j < 0$ are zero (causal). Not diagonalized by DFT.<br>
+                            <strong>Circulant (Circular):</strong> $y = H_c x$. Diagonals wrap around ($i-j \pmod N$).<br>
+                            <strong>Key Property:</strong> $H_c = Q^H \Lambda Q$, where $Q$ is the DFT matrix. This allows $Y[k] = H[k]X[k]$.
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <canvas id="cv-matrix" style="height:350px;" role="img" aria-label="Grid visualization of convolution matrix structure."></canvas>
+                    <div id="matrix-status" style="text-align:center; margin-top:5px; font-weight:bold;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-cp" class="tab-content" role="tabpanel" aria-labelledby="btn-cp">
+        <div class="panel">
+            <h3>The Cyclic Prefix (CP) Trick</h3>
+            <p>How we transform linear convolution into circular convolution. Copy the end to the front!</p>
+
+            <div class="grid">
+                <div>
+                    <div class="control-group">
+                        <button id="btn-run-cp" class="action-btn" onclick="app.runCPAnim()">▶ Run Animation</button>
+                    </div>
+                    <ul style="font-size:0.9rem; padding-left:20px; line-height: 1.6;">
+                        <li><strong>Step 1:</strong> Take data block of length N.</li>
+                        <li><strong>Step 2:</strong> Copy last $L$ samples to front (CP).</li>
+                        <li><strong>Step 3:</strong> Transmit through linear channel (causes smear).</li>
+                        <li><strong>Step 4:</strong> Receiver discards the CP.</li>
+                        <li><strong>Result:</strong> The remaining interference-free block appears as if circularly convolved.</li>
+                    </ul>
+                    <div class="theory-box">
+                        <button class="toggle-theory" onclick="app.toggle('th-cp')">Show/Hide Equations</button>
+                        <div id="th-cp" class="theory">
+                            <strong>Condition:</strong> $T_{CP} \ge \tau_{max}$ (Length of CP must exceed channel order).<br>
+                            The "garbage" (ISI from previous block) lands entirely within the CP region. Discarding CP removes ISI and restores orthogonality.
+                        </div>
+                    </div>
+                </div>
+                <canvas id="cv-cp" style="height:250px;" role="img" aria-label="Animation demonstrating the cyclic prefix insertion and removal process."></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-design" class="tab-content" role="tabpanel" aria-labelledby="btn-design">
+        <div class="panel">
+            <h3>OFDM System Designer</h3>
+            <p>Balance trade-offs: Efficiency vs. Robustness. <br><em>Goal: Efficiency > 80% and Valid Physics.</em></p>
+
+            <div class="grid" style="grid-template-columns: 1fr 1fr;">
+                <div>
+                    <h4>1. Environment Constraints</h4>
+                    <div class="control-group">
+                        <label for="sl-des-bw">Bandwidth (BW) <span id="val-des-bw" class="badge">10 MHz</span></label>
+                        <input type="range" id="sl-des-bw" min="1" max="20" step="1" value="10" oninput="app.calcDesign()" aria-label="Bandwidth Slider">
+                    </div>
+                    <div class="control-group">
+                        <label for="sl-des-del">Delay Spread ($\tau_{max}$) <span id="val-des-del" class="badge">2.0 µs</span></label>
+                        <input type="range" id="sl-des-del" min="0.5" max="10" step="0.5" value="2" oninput="app.calcDesign()" aria-label="Delay Spread Slider">
+                    </div>
+                    <div class="control-group">
+                        <label for="sl-des-coh">Coherence Time ($T_{coh}$) <span id="val-des-coh" class="badge">500 µs</span></label>
+                        <input type="range" id="sl-des-coh" min="100" max="2000" step="100" value="500" oninput="app.calcDesign()" aria-label="Coherence Time Slider">
+                    </div>
+
+                    <h4>2. System Parameter</h4>
+                    <div class="control-group">
+                        <label for="sel-des-n">Subcarriers (N)</label>
+                        <select id="sel-des-n" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ccc;" onchange="app.calcDesign()" aria-label="Subcarrier Count Selector">
+                            <option value="64">64 (Short Symbol)</option>
+                            <option value="256">256</option>
+                            <option value="1024" selected>1024</option>
+                            <option value="4096">4096 (Long Symbol)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="background:#f9f9f9; padding:15px; border-radius:8px; border: 1px solid #eee;">
+                    <h4>Analysis</h4>
+                    <div style="margin-bottom:10px;">
+                        <strong>1. ISI Check:</strong> <span id="res-isi">-</span><br>
+                        <small style="color:#666;">Requirement: $T_{CP} \ge \tau_{max}$</small>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <strong>2. Mobility Check:</strong> <span id="res-time">-</span><br>
+                        <small style="color:#666;">Requirement: $T_{total} \ll T_{coh}$ (approx 10%)</small>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <strong>Efficiency ($\eta$):</strong> <span id="res-eff">-</span>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <strong>Raw Data Rate:</strong> <span id="res-rate" style="font-size:1.2rem; color:var(--primary); font-weight:bold;">-</span>
+                        <div style="font-size:0.8em; color:#666;">(Assuming 16-QAM)</div>
+                    </div>
+                    <hr>
+                    <canvas id="cv-design" style="height:140px;" role="img" aria-label="Bar charts showing efficiency and symbol duration relative to coherence time."></canvas>
+                </div>
+            </div>
+            <div class="theory-box">
+                <button class="toggle-theory" onclick="app.toggle('th-des')">Show/Hide Equations</button>
+                <div id="th-des" class="theory">
+                    $T_{sym} = N / BW$ (Useful symbol duration)<br>
+                    $T_{CP} = \tau_{max}$ (Min CP duration to avoid ISI)<br>
+                    <strong>Efficiency:</strong> $\eta = \frac{T_{sym}}{T_{sym} + T_{CP}}$.<br>
+                    <strong>Time Constraint:</strong> $T_{total} < 0.1 \times T_{coh}$ to treat channel as constant.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-papr" class="tab-content" role="tabpanel" aria-labelledby="btn-papr">
+        <div class="panel">
+            <h3>The Cost: Peak-to-Average Power Ratio (PAPR)</h3>
+            <p>Summing many subcarriers can create large constructive spikes, requiring expensive linear amplifiers.</p>
+
+            <div class="control-group">
+                <button class="action-btn" onclick="app.drawPAPR()">Generate New Random Symbol</button>
+            </div>
+
+            <canvas id="cv-papr" role="img" aria-label="Time domain plot of an OFDM symbol power showing peak vs average power."></canvas>
+
+            <div style="margin-top:15px; font-size:0.95rem; text-align: center;">
+                Peak Power: <strong id="res-papr-peak">-</strong> | Average Power: <strong id="res-papr-avg">-</strong><br>
+                <span style="font-size: 1.1em; display:inline-block; margin-top:5px;">
+                    PAPR: <strong id="res-papr-val" style="color:var(--highlight)">-</strong> dB
+                </span>
+            </div>
+
+            <div class="theory-box">
+                <button class="toggle-theory" onclick="app.toggle('th-papr')">Show/Hide Equations</button>
+                <div id="th-papr" class="theory">
+                    $x(t) = \sum_{k=0}^{N-1} X_k e^{j 2\pi k t / T_{sym}}$<br>
+                    $PAPR_{dB} = 10 \log_{10} \frac{\max |x(t)|^2}{E[|x(t)|^2]}$.<br>
+                    As $N$ increases, the probability of high PAPR increases (Central Limit Theorem $\to$ Gaussian distribution).
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<div class="instructor-notes">
+    <strong>Instructor Notes:</strong>
+    <ul>
+        <li><strong>Tab 1 (ISI):</strong> Demonstrate the "Guard Interval" concept. Show that if you transmit slowly (Rate < 0.5 MBd), the delay spread fits in the gap between pulses. OFDM effectively makes the symbol very long to achieve this.</li>
+        <li><strong>Tab 2 (Matrices):</strong> Switch between Linear and Circular modes. Ask students to identify the specific grid cells that make the difference (the upper right and lower left corners).</li>
+        <li><strong>Tab 3 (CP):</strong> Pause the animation at the "Channel Smear" step. Ask: "Where does the red interference land?" (Answer: In the CP). "What happens if the channel smear is longer than the yellow CP?" (Answer: ISI in the data block).</li>
+        <li><strong>Tab 4 (Design):</strong> Challenge: Find a valid configuration for a 10 MHz channel with high mobility ($T_{coh}=200\mu s$). Students will find that large $N$ (4096) violates the time constraint, forcing them to use smaller $N$.</li>
+    </ul>
+</div>
+
+<script>
+    const app = {
+        // State
+        currentTab: 'isi',
+        cpAnimFrame: 0,
+        cpAnimId: null,
+
+        // Initialization
+        init: function() {
+            // Ensure event listeners are ready
+            this.setTab('isi');
+            // Force initial calculations
+            this.calcDesign();
+            this.drawPAPR();
+
+            // Mobile/Resize Handler
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    this.refreshCurrentTab();
+                }, 200);
+            });
+        },
+
+        refreshCurrentTab: function() {
+            if (this.currentTab === 'isi') this.drawISI();
+            if (this.currentTab === 'matrix') this.drawMatrix();
+            if (this.currentTab === 'cp') this.drawCPFrame(); // Static frame redraw
+            if (this.currentTab === 'design') this.calcDesign();
+            if (this.currentTab === 'papr') this.drawPAPR();
+        },
+
+        // --- TAB LOGIC ---
+        setTab: function(id) {
+            // 1. Teardown current tab
+            if (this.currentTab === 'cp') {
+                this.stopCPAnim();
+            }
+
+            // 2. State Update
+            this.currentTab = id;
+
+            // 3. UI Update
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+                el.setAttribute('aria-selected', 'false');
+            });
+
+            const activeContent = document.getElementById('tab-' + id);
+            const activeBtn = document.getElementById('btn-' + id);
+
+            if (activeContent) activeContent.classList.add('active');
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+                activeBtn.setAttribute('aria-selected', 'true');
+            }
+
+            // 4. Trigger Visualization
+            this.refreshCurrentTab();
+        },
+
+        toggle: function(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = el.style.display === 'block' ? 'none' : 'block';
+            }
+        },
+
+        // --- CANVAS UTILS ---
+        getCanvas: function(id) {
+            const cv = document.getElementById(id);
+            if (!cv) return null;
+            // Handle high DPI displays
+            const dpr = window.devicePixelRatio || 1;
+            const rect = cv.getBoundingClientRect();
+            
+            // Only resize if dimensions changed significantly
+            if (cv.width !== Math.round(rect.width * dpr) || cv.height !== Math.round(rect.height * dpr)) {
+                cv.width = Math.round(rect.width * dpr);
+                cv.height = Math.round(rect.height * dpr);
+            }
+            
+            const ctx = cv.getContext('2d');
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+            return { cv, ctx, w: rect.width, h: rect.height };
+        },
+
+        // --- TAB 1: ISI ---
+        drawISI: function() {
+            const obj = this.getCanvas('cv-isi');
+            if (!obj) return;
+            const { ctx, w, h } = obj;
+
+            // Inputs
+            const rate = parseFloat(document.getElementById('sl-isi-rate').value); // MegaSymbols/s
+            const delay = parseFloat(document.getElementById('sl-isi-delay').value); // µs
+
+            // Update Labels
+            document.getElementById('val-isi-rate').innerText = rate.toFixed(1) + " MBd";
+            document.getElementById('val-isi-delay').innerText = delay.toFixed(1) + " µs";
+
+            const Ts = 1 / rate; // Symbol duration in µs
+            const timeWindow = 10; // Total plot time window in µs
+            const pxPerUs = w / timeWindow;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. Draw Channel Delay Bar (Reference)
+            const delayPx = delay * pxPerUs;
+            ctx.fillStyle = "rgba(39, 174, 96, 0.15)";
+            ctx.fillRect(0, 0, delayPx, h);
+            
+            ctx.strokeStyle = "#27ae60";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 3]);
+            ctx.beginPath();
+            ctx.moveTo(delayPx, 0); ctx.lineTo(delayPx, h);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = "#27ae60";
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText(`Channel Memory: ${delay.toFixed(1)} µs`, 5, 20);
+
+            // 2. Draw Transmitted Pulses (Blue)
+            const numSym = Math.ceil(timeWindow / Ts) + 1;
+            const yTx = h * 0.3;
+            const pulseH = 40;
+
+            ctx.strokeStyle = "#3498db";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            // Draw baseline
+            ctx.moveTo(0, yTx);
+            ctx.lineTo(w, yTx);
+            
+            for (let i = 0; i < numSym; i++) {
+                let x = i * Ts * pxPerUs;
+                // Square pulse
+                ctx.moveTo(x + 2, yTx);
+                ctx.lineTo(x + 2, yTx - pulseH);
+                ctx.lineTo(x + Ts * pxPerUs - 2, yTx - pulseH);
+                ctx.lineTo(x + Ts * pxPerUs - 2, yTx);
+            }
+            ctx.stroke();
+            ctx.fillStyle = "#3498db";
+            ctx.fillText("Transmitted (Square Pulses)", w - 180, yTx - 50);
+            ctx.fillText(`Symbol T_s = ${Ts.toFixed(2)} µs`, w - 180, yTx - 35);
+
+            // 3. Draw Received Pulses (Red - Smeared)
+            const yRx = h * 0.75;
+            ctx.strokeStyle = "#c0392b";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, yRx); // Baseline
+            ctx.lineTo(w, yRx);
+
+            for (let i = 0; i < numSym; i++) {
+                let x = i * Ts * pxPerUs;
+                // Received pulse width = Ts + Delay
+                let rxWidth = (Ts + delay) * pxPerUs;
+                
+                // Visual overlap check
+                let nextStart = (i + 1) * Ts * pxPerUs;
+                let currentEnd = x + rxWidth;
+                
+                // Draw trapezoid/stretched pulse approximation
+                ctx.moveTo(x, yRx);
+                ctx.lineTo(x, yRx - pulseH);
+                ctx.lineTo(x + rxWidth, yRx - pulseH);
+                ctx.lineTo(x + rxWidth, yRx);
+            }
+            ctx.stroke();
+
+            // 4. Pass/Fail Feedback
+            // ISI happens if the 'tail' of symbol n overlaps symbol n+1
+            // Tail length is 'delay'. Gap is 0 in this tight packing model, 
+            // but effectively if delay > Ts, we have severe overlap of adjacent symbols
+            const severeISI = delay > Ts * 0.1; // Strict constraint for single carrier
+
+            ctx.fillStyle = severeISI ? "#c0392b" : "#27ae60";
+            ctx.font = "bold 14px sans-serif";
+            const statusText = severeISI ? "INTERFERENCE DETECTED" : "CLEAN SIGNAL";
+            ctx.fillText(statusText, w - 180, yRx - 50);
+
+            ctx.fillStyle = "#c0392b";
+            ctx.font = "12px sans-serif";
+            ctx.fillText("Received (Convolution)", w - 180, yRx - 10);
+            
+            // Axis Labels
+            ctx.fillStyle = "#666";
+            ctx.fillText("Time (µs) →", w/2, h - 5);
+        },
+
+        // --- TAB 2: MATRICES ---
+        mxMode: 'linear',
+        setMatrixMode: function(m) {
+            this.mxMode = m;
+            // Update button styles
+            const linBtn = document.getElementById('btn-mx-lin');
+            const circBtn = document.getElementById('btn-mx-circ');
+            
+            if(m === 'linear') {
+                linBtn.style.opacity = '1'; linBtn.style.fontWeight = 'bold';
+                circBtn.style.opacity = '0.6'; circBtn.style.fontWeight = 'normal';
+            } else {
+                linBtn.style.opacity = '0.6'; linBtn.style.fontWeight = 'normal';
+                circBtn.style.opacity = '1'; circBtn.style.fontWeight = 'bold';
+            }
+            this.drawMatrix();
+        },
+        drawMatrix: function() {
+            const obj = this.getCanvas('cv-matrix');
+            if (!obj) return;
+            const { ctx, w, h } = obj;
+
+            const N = parseInt(document.getElementById('sl-mx-n').value);
+            document.getElementById('val-mx-n').innerText = N;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Draw Matrix Grid
+            const pad = 30;
+            const availW = w - pad * 2;
+            const availH = h - pad * 2;
+            const cellSize = Math.min(availW / N, availH / N);
+            const startX = (w - cellSize * N) / 2;
+            const startY = (h - cellSize * N) / 2;
+
+            // Colors
+            const cMain = "#3498db"; // Main diagonal (h0)
+            const cOff1 = "#e74c3c"; // Off diagonal 1 (h1)
+            const cOff2 = "#f1c40f"; // Off diagonal 2 (h2)
+            const cEmpty = "#ecf0f1"; // Zeros
+
+            ctx.font = `${Math.max(10, cellSize/2.5)}px monospace`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            for (let r = 0; r < N; r++) {
+                for (let c = 0; c < N; c++) {
+                    let color = cEmpty;
+                    let text = "";
+
+                    // Matrix Logic
+                    // y[n] = sum h[k] x[n-k]
+                    // Matrix index H[r, c] corresponds to h[r-c]
+                    
+                    let diff = r - c;
+                    
+                    if (this.mxMode === 'linear') {
+                        // Linear Convolution (Toeplitz)
+                        // Only valid if r-c >= 0 (Causal)
+                        if (diff === 0) { color = cMain; text = "h0"; }
+                        else if (diff === 1) { color = cOff1; text = "h1"; }
+                        else if (diff === 2) { color = cOff2; text = "h2"; }
+                    } else {
+                        // Circular Convolution (Circulant)
+                        // Index is (r-c) mod N
+                        let modDiff = (diff + N) % N;
+                        if (modDiff === 0) { color = cMain; text = "h0"; }
+                        else if (modDiff === 1) { color = cOff1; text = "h1"; }
+                        else if (modDiff === 2) { color = cOff2; text = "h2"; }
+                    }
+
+                    ctx.fillStyle = color;
+                    ctx.fillRect(startX + c * cellSize, startY + r * cellSize, cellSize - 1, cellSize - 1);
+                    
+                    if (text && cellSize > 20) {
+                        ctx.fillStyle = "white";
+                        ctx.fillText(text, startX + c*cellSize + cellSize/2, startY + r*cellSize + cellSize/2);
+                    }
+                }
+            }
+
+            const status = document.getElementById('matrix-status');
+            if (this.mxMode === 'linear') {
+                status.innerHTML = `Structure: Toeplitz (Linear)<br><span style="font-weight:normal; font-size:0.9rem; color:#c0392b;">Upper-right triangle is empty. No "wrap-around".</span>`;
+            } else {
+                status.innerHTML = `Structure: Circulant (Circular)<br><span style="font-weight:normal; font-size:0.9rem; color:#27ae60;">Upper-right triangle filled! (e.g., h1, h2 wrap around).</span>`;
+            }
+        },
+
+        // --- TAB 3: CYCLIC PREFIX ---
+        runCPAnim: function() {
+            this.stopCPAnim(); // Clear existing
+            this.cpAnimFrame = 0;
+            const btn = document.getElementById('btn-run-cp');
+            btn.disabled = true; // Debounce
+            
+            this.cpAnimId = setInterval(() => {
+                this.cpAnimFrame++;
+                this.drawCPFrame();
+                if (this.cpAnimFrame > 220) {
+                    this.stopCPAnim();
+                    btn.disabled = false;
+                }
+            }, 25);
+        },
+        stopCPAnim: function() {
+            if (this.cpAnimId) {
+                clearInterval(this.cpAnimId);
+                this.cpAnimId = null;
+                const btn = document.getElementById('btn-run-cp');
+                if(btn) btn.disabled = false;
+            }
+        },
+        drawCPFrame: function() {
+            const obj = this.getCanvas('cv-cp');
+            if (!obj) return;
+            const { ctx, w, h } = obj;
+            const t = this.cpAnimFrame;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.font = "14px Segoe UI, sans-serif";
+
+            // Drawing Geometry
+            const blkH = 40;
+            const blkW = Math.min(200, w * 0.4);
+            const cpW = blkW * 0.25; // CP is 25% of block
+            const centerX = w / 2 - blkW / 2;
+            const blkY = h / 2 - 20;
+
+            // --- PHASE 1: DATA BLOCK (0-50) ---
+            if (t < 50) {
+                // Main Block
+                ctx.fillStyle = "#3498db";
+                ctx.fillRect(centerX, blkY, blkW, blkH);
+                ctx.fillStyle = "white";
+                ctx.fillText("Data (N)", centerX + blkW/2 - 25, blkY + 25);
+                
+                // Label
+                ctx.fillStyle = "#333";
+                ctx.fillText("1. Original Symbol Block", 10, 30);
+            }
+            // --- PHASE 2: ADD CP (50-100) ---
+            else if (t < 100) {
+                ctx.fillStyle = "#3498db";
+                ctx.fillRect(centerX, blkY, blkW, blkH);
+                
+                // Highlight End (Source of CP)
+                ctx.fillStyle = "#f1c40f";
+                ctx.fillRect(centerX + blkW - cpW, blkY, cpW, blkH);
+                
+                // Animating CP Piece moving to front
+                let progress = Math.min(1, (t - 50) / 40);
+                // Ease function
+                progress = progress * (2 - progress);
+                
+                let startX = centerX + blkW - cpW;
+                let targetX = centerX - cpW;
+                let curX = startX + (targetX - startX) * progress;
+                
+                // Draw moving piece
+                ctx.fillStyle = "rgba(241, 196, 15, 0.8)";
+                ctx.strokeStyle = "#d35400";
+                ctx.lineWidth = 1;
+                ctx.fillRect(curX, blkY, cpW, blkH);
+                ctx.strokeRect(curX, blkY, cpW, blkH);
+                
+                ctx.fillStyle = "#333";
+                ctx.fillText("2. Copy End to Front (Guard Interval)", 10, 30);
+            }
+            // --- PHASE 3: CHANNEL SMEAR (100-160) ---
+            else if (t < 160) {
+                // Static Full Packet
+                ctx.fillStyle = "#f1c40f"; 
+                ctx.fillRect(centerX - cpW, blkY, cpW, blkH); // CP
+                ctx.fillStyle = "#3498db"; 
+                ctx.fillRect(centerX, blkY, blkW, blkH); // Data
+                ctx.strokeStyle = "#fff";
+                ctx.strokeRect(centerX - cpW, blkY, cpW+blkW, blkH);
+
+                // Previous Block Interference (Red)
+                // Simulating ISI coming from the left
+                let smearProgress = Math.min(1, (t - 100) / 40);
+                let smearLen = cpW * 0.8; // Smear is shorter than CP (Ideal case)
+                
+                let smearX = centerX - cpW - 30 + (30 * smearProgress); // Moving in from left
+                
+                ctx.fillStyle = "rgba(231, 76, 60, 0.7)";
+                ctx.beginPath();
+                ctx.moveTo(smearX, blkY);
+                ctx.lineTo(smearX + smearLen, blkY + 10);
+                ctx.lineTo(smearX + smearLen, blkY + blkH - 10);
+                ctx.lineTo(smearX, blkY + blkH);
+                ctx.fill();
+                
+                // Label Smear
+                if (smearProgress > 0.5) {
+                    ctx.fillStyle = "#c0392b";
+                    ctx.font = "bold 12px sans-serif";
+                    ctx.fillText("ISI", centerX - cpW + 5, blkY + blkH/2 + 4);
+                }
+
+                ctx.fillStyle = "#333";
+                ctx.fillText("3. Transmission: Channel smearing lands in CP", 10, 30);
+            }
+            // --- PHASE 4: REMOVE CP (160+) ---
+            else {
+                // Show Cut action
+                ctx.fillStyle = "#f1c40f"; 
+                ctx.globalAlpha = 0.3; // Faded CP
+                ctx.fillRect(centerX - cpW, blkY, cpW, blkH); 
+                ctx.globalAlpha = 1.0;
+                
+                // Clean Data
+                ctx.fillStyle = "#3498db"; 
+                ctx.fillRect(centerX, blkY, blkW, blkH);
+                ctx.fillStyle = "white";
+                ctx.fillText("Clean Data", centerX + blkW/2 - 30, blkY + 25);
+                
+                // Scissors/Cut visual
+                ctx.strokeStyle = "#333";
+                ctx.setLineDash([5, 3]);
+                ctx.beginPath();
+                ctx.moveTo(centerX, blkY - 10);
+                ctx.lineTo(centerX, blkY + blkH + 10);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = "#333";
+                ctx.fillText("4. Receiver: Strip CP = Discard Interference", 10, 30);
+            }
+        },
+
+        // --- TAB 4: DESIGN ---
+        calcDesign: function() {
+            // Inputs & Units
+            const BW_MHz = parseFloat(document.getElementById('sl-des-bw').value); 
+            const Tau_us = parseFloat(document.getElementById('sl-des-del').value);
+            const Tcoh_us = parseFloat(document.getElementById('sl-des-coh').value);
+            const N = parseInt(document.getElementById('sel-des-n').value);
+
+            // Update Labels
+            document.getElementById('val-des-bw').innerText = BW_MHz + " MHz";
+            document.getElementById('val-des-del').innerText = Tau_us.toFixed(1) + " µs";
+            document.getElementById('val-des-coh').innerText = Tcoh_us.toFixed(0) + " µs";
+
+            // Physics Model
+            // BW in Hz = BW_MHz * 1e6
+            // Subcarrier spacing df = BW / N
+            // Symbol Duration Tsym = 1 / df = N / BW
+            // In us: Tsym_us = N / BW_MHz
+            
+            const Tsym_us = N / BW_MHz;
+            
+            // Design Choice: CP must cover Delay Spread.
+            // Let's assume we set CP = Delay Spread (Minimum overhead)
+            const Tcp_us = Tau_us; 
+            const Ttotal_us = Tsym_us + Tcp_us;
+            
+            // Metrics
+            const Efficiency = Tsym_us / Math.max(Ttotal_us, 1e-9); // guard div 0
+            
+            // Data Rate (Raw)
+            // Rate = (BitsPerSubcarrier * N) / Ttotal
+            // 16-QAM = 4 bits
+            const BitsPerSym = 4 * N; 
+            const Rate_Mbps = BitsPerSym / Ttotal_us; // (bits / us) = Mbps
+
+            // --- CHECKS ---
+            
+            // 1. ISI Check
+            // We force CP = Tau, so physically it passes, but we check if CP is "too large" relative to symbol
+            // If CP > Tsym, efficiency is < 50%, which is terrible design.
+            const resISI = document.getElementById('res-isi');
+            if (Tcp_us < Tsym_us) {
+                resISI.innerHTML = `<span class="status-pass">PASS</span> (CP < Sym)`;
+            } else {
+                resISI.innerHTML = `<span class="status-warn">POOR</span> (CP dominates)`;
+            }
+
+            // 2. Mobility Check (10% Rule)
+            const limit_us = Tcoh_us * 0.1;
+            const resTime = document.getElementById('res-time');
+            if (Ttotal_us < limit_us) {
+                resTime.innerHTML = `<span class="status-pass">PASS</span> (${Ttotal_us.toFixed(1)} µs < ${limit_us.toFixed(1)} µs)`;
+            } else {
+                resTime.innerHTML = `<span class="status-fail">FAIL</span> (${Ttotal_us.toFixed(1)} µs > limit)`;
+            }
+
+            // 3. Efficiency
+            const resEff = document.getElementById('res-eff');
+            const effPct = (Efficiency * 100).toFixed(1);
+            if (Efficiency > 0.80) resEff.innerHTML = `<span class="status-pass">${effPct}%</span> (Excellent)`;
+            else if (Efficiency > 0.60) resEff.innerHTML = `<span class="status-warn">${effPct}%</span> (Okay)`;
+            else resEff.innerHTML = `<span class="status-fail">${effPct}%</span> (High Overhead)`;
+
+            document.getElementById('res-rate').innerText = Rate_Mbps.toFixed(1) + " Mbps";
+
+            this.drawDesignVis(Efficiency, Ttotal_us, limit_us);
+        },
+
+        drawDesignVis: function(eff, t_tot, t_limit) {
+            const obj = this.getCanvas('cv-design');
+            if (!obj) return;
+            const { ctx, w, h } = obj;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.font = "12px sans-serif";
+
+            // Bar 1: Efficiency
+            ctx.fillStyle = "#333"; ctx.fillText("Efficiency", 10, 30);
+            const barX = 100;
+            const barW = w - 150;
+            
+            // Background
+            ctx.fillStyle = "#ecf0f1"; 
+            ctx.fillRect(barX, 15, barW, 20);
+            
+            // Fill
+            ctx.fillStyle = eff > 0.8 ? "#27ae60" : (eff > 0.6 ? "#f1c40f" : "#e74c3c");
+            ctx.fillRect(barX, 15, barW * eff, 20);
+            ctx.fillStyle = "#fff";
+            ctx.fillText((eff*100).toFixed(0)+"%", barX + 5, 29);
+
+            // Bar 2: Symbol Duration vs Coherence Limit
+            ctx.fillStyle = "#333"; ctx.fillText("Time Budget", 10, 80);
+            
+            // Scale: let max visible range be 1.5x the limit or 1.5x the actual, whichever larger
+            const maxScale = Math.max(t_limit * 2, t_tot * 1.2);
+            
+            // Background
+            ctx.fillStyle = "#ecf0f1"; 
+            ctx.fillRect(barX, 65, barW, 20);
+            
+            // Forbidden Zone (Time > limit)
+            const safePx = (t_limit / maxScale) * barW;
+            ctx.fillStyle = "rgba(231, 76, 60, 0.1)";
+            ctx.fillRect(barX + safePx, 65, barW - safePx, 20);
+            
+            // Limit Line
+            ctx.beginPath();
+            ctx.moveTo(barX + safePx, 60);
+            ctx.lineTo(barX + safePx, 90);
+            ctx.strokeStyle = "#c0392b";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = "#c0392b";
+            ctx.fillText("Limit (10% Tcoh)", barX + safePx - 40, 55);
+
+            // Actual Symbol Length
+            const actualPx = Math.min((t_tot / maxScale) * barW, barW);
+            ctx.fillStyle = t_tot < t_limit ? "#3498db" : "#e74c3c";
+            ctx.fillRect(barX, 65, actualPx, 20);
+            
+            ctx.fillStyle = "#333";
+            ctx.fillText(`${t_tot.toFixed(1)} µs`, barX + actualPx + 5, 80);
+        },
+
+        // --- TAB 5: PAPR ---
+        drawPAPR: function() {
+            const obj = this.getCanvas('cv-papr');
+            if (!obj) return;
+            const { ctx, w, h } = obj;
+
+            // Sim Params
+            const N = 64; 
+            const OS = 4; // Oversampling
+            const Nfft = N * OS;
+
+            // Generate Random QPSK
+            const X_re = new Float32Array(N);
+            const X_im = new Float32Array(N);
+            for (let i = 0; i < N; i++) {
+                // QPSK: +/- 1
+                X_re[i] = Math.random() > 0.5 ? 1 : -1;
+                X_im[i] = Math.random() > 0.5 ? 1 : -1;
+            }
+
+            // IDFT (Naive O(N^2) is fine for N=64*4 = 256 pts)
+            // x[n] = sum(X[k] * exp(j 2pi k n / N))
+            const x_pwr = new Float32Array(Nfft);
+            let maxP = 0;
+            let sumP = 0;
+
+            for (let n = 0; n < Nfft; n++) {
+                let re = 0, im = 0;
+                let t = n / OS; // Time index relative to symbol
+                
+                for (let k = 0; k < N; k++) {
+                    // Shifted index for baseband centering? 
+                    // Standard OFDM usually 0..N-1
+                    let angle = (2 * Math.PI * k * t) / N;
+                    let c = Math.cos(angle);
+                    let s = Math.sin(angle);
+                    
+                    // Complex Mult: (a+jb)(c+js) = (ac-bs) + j(as+bc)
+                    re += X_re[k] * c - X_im[k] * s;
+                    im += X_re[k] * s + X_im[k] * c;
+                }
+                // Normalize by sqrt(N) for energy conservation
+                re /= Math.sqrt(N);
+                im /= Math.sqrt(N);
+                
+                let p = re*re + im*im;
+                x_pwr[n] = p;
+                if(p > maxP) maxP = p;
+                sumP += p;
+            }
+
+            // Metrics
+            const avgP = Math.max(sumP / Nfft, 1e-9); // safety
+            const paprLin = maxP / avgP;
+            const paprDb = 10 * Math.log10(paprLin);
+
+            document.getElementById('res-papr-peak').innerText = maxP.toFixed(2);
+            document.getElementById('res-papr-avg').innerText = avgP.toFixed(2);
+            document.getElementById('res-papr-val').innerText = paprDb.toFixed(2);
+
+            // Plotting
+            ctx.clearRect(0, 0, w, h);
+            const pad = 40;
+            const plotW = w - pad * 2;
+            const plotH = h - pad * 2;
+
+            // Axes
+            ctx.beginPath();
+            ctx.strokeStyle = "#aaa";
+            ctx.lineWidth = 1;
+            ctx.moveTo(pad, h - pad); ctx.lineTo(w - pad, h - pad); // X
+            ctx.moveTo(pad, h - pad); ctx.lineTo(pad, pad); // Y
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = "#666";
+            ctx.textAlign = "center";
+            ctx.fillText("Time (One Symbol Period)", w / 2, h - 10);
+            ctx.save();
+            ctx.translate(15, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText("Instantaneous Power |x(t)|²", 0, 0);
+            ctx.restore();
+
+            // Trace
+            ctx.beginPath();
+            ctx.strokeStyle = "#2c3e50";
+            ctx.lineWidth = 1.5;
+            
+            // Scale Y to fit max peak plus headroom
+            const yMax = Math.max(maxP, 10) * 1.2;
+            
+            for (let i = 0; i < Nfft; i++) {
+                let x = pad + (i / Nfft) * plotW;
+                let y = (h - pad) - (x_pwr[i] / yMax) * plotH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Average Line
+            const yAvg = (h - pad) - (avgP / yMax) * plotH;
+            ctx.beginPath();
+            ctx.strokeStyle = "#27ae60";
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(pad, yAvg);
+            ctx.lineTo(w - pad, yAvg);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = "#27ae60";
+            ctx.fillText(`Avg Power`, w - pad - 30, yAvg - 5);
+        }
+    };
+
+    // Boot
+    window.addEventListener('DOMContentLoaded', () => app.init());
+
+</script>
+</body>
+</html>

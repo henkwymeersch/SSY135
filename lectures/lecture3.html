@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Small-Scale Fading - Interactive Lecture 3</title>
+    <style>
+        :root {
+            /* Lecture 1-3 Consistent Palette */
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --light: #ecf0f1;
+            --text: #333;
+            --border: #bdc3c7;
+            --success: #27ae60;
+            --danger: #c0392b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .subtitle { font-size: 0.9rem; opacity: 0.8; }
+
+        /* Navigation */
+        .tab-nav {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { background-color: var(--light); }
+        .tab-btn:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+        .tab-btn.active {
+            border-bottom-color: var(--accent);
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* Content */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Controls Panel */
+        .panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid var(--light);
+        }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            display: block;
+        }
+        .value-badge {
+            background: var(--light);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--primary);
+            font-size: 0.85rem;
+        }
+
+        /* Visualization Area */
+        .viz-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 450px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            max-height: 400px;
+            background-color: #fff;
+        }
+
+        /* Theory Box */
+        .theory-box {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-left: 4px solid #f1c40f; /* Yellow for "Caution/Note" */
+            font-size: 0.9rem;
+            display: none; 
+            line-height: 1.6;
+        }
+        .toggle-link {
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+        
+        /* Action Buttons */
+        .btn-group { display: flex; gap: 10px; margin-top: 1rem; }
+        .btn {
+            flex: 1;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn:hover { background-color: #2980b9; }
+        .btn-secondary { background: #95a5a6; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .btn-outline { 
+            background: transparent; 
+            border: 1px solid var(--border); 
+            color: var(--text); 
+            margin-top: 5px;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            width: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-layout { grid-template-columns: 1fr; }
+            .tab-btn { padding: 0.8rem 1rem; font-size: 0.9rem; }
+            header { padding: 1rem; }
+            .viz-container { min-height: 350px; }
+        }
+    </style>
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Wireless Propagation II</h1>
+        <div class="subtitle">Lecture 3: Doppler, Multipath & Fading</div>
+    </div>
+    <div style="text-align: right; font-size: 0.8rem;">
+        SSY135<br>Interactive Lab
+    </div>
+</header>
+
+<nav class="tab-nav" role="tablist">
+    <button id="btn-doppler" class="tab-btn active" role="tab" aria-selected="true" onclick="app.switchTab('doppler')">1. Doppler Shift</button>
+    <button id="btn-resolvability" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('resolvability')">2. Multipath & Bandwidth</button>
+    <button id="btn-stats" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('stats')">3. Rayleigh vs Rice</button>
+    <button id="btn-jakes" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('jakes')">4. Jakes Model</button>
+</nav>
+
+<div class="container">
+
+    <div id="doppler" class="tab-content active" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Mobility & Frequency Shift</h3>
+                <p class="subtitle">Motion creates phase rotation over time.</p>
+                
+                <div class="control-group">
+                    <label for="sl-dop-v">Velocity (v) <span id="val-dop-v" class="value-badge">50 km/h</span></label>
+                    <input type="range" id="sl-dop-v" min="0" max="250" value="50">
+                </div>
+                <div class="control-group">
+                    <label for="sl-dop-fc">Frequency (fc) <span id="val-dop-fc" class="value-badge">2.0 GHz</span></label>
+                    <input type="range" id="sl-dop-fc" min="0.5" max="30" step="0.1" value="2.0">
+                </div>
+                <div class="control-group">
+                    <label for="sl-dop-theta">Angle (&theta;) <span id="val-dop-theta" class="value-badge">0 deg</span></label>
+                    <input type="range" id="sl-dop-theta" min="0" max="180" value="0">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetDoppler()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-dop">
+                    <strong>Doppler Shift ($f_D$):</strong><br>
+                    [cite_start]$f_D = \frac{v}{\lambda} \cos \theta$[cite: 1019].<br>
+                    <strong>Coherence Time ($T_c$):</strong><br>
+                    Time over which channel is constant. [cite_start]$T_c \approx 0.4/f_D$[cite: 1404].<br>
+                    Fast movement &rarr; High $f_D$ &rarr; Short $T_c$ (Fast Fading).
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-dop')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-dop" role="img" aria-label="Animation of a rotating phasor representing the complex baseband signal affected by Doppler shift"></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-dop')">Download</button>
+                </div>
+                <div style="margin-top:10px; font-size:0.9rem; color:#555; text-align:center;">
+                    Doppler Shift: <strong id="res-fd" style="color:var(--accent)">- Hz</strong><br>
+                    Coherence Time: <strong id="res-tc">- ms</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="resolvability" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Narrowband vs Wideband</h3>
+                <p class="subtitle">Bandwidth determines if echoes are resolved.</p>
+                
+                <div class="control-group">
+                    <label for="sl-res-tm">Delay Spread ($T_m$) <span id="val-res-tm" class="value-badge">2.0 µs</span></label>
+                    <input type="range" id="sl-res-tm" min="0.1" max="5.0" step="0.1" value="2.0">
+                </div>
+                <div class="control-group">
+                    <label for="sl-res-bw">Bandwidth (B) <span id="val-res-bw" class="value-badge">100 kHz</span></label>
+                    <input type="range" id="sl-res-bw" min="0.01" max="5.0" step="0.01" value="0.1">
+                    <small style="color:#666">Range: 10 kHz to 5 MHz</small>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetResolvability()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-res">
+                    <strong>Narrowband ($1/B \gg T_m$):</strong><br>
+                    Pulse width is large. Echoes merge. [cite_start]Channel is "Flat Fading"[cite: 1060].<br>
+                    <strong>Wideband ($1/B \ll T_m$):</strong><br>
+                    Pulse width is short. Echoes are distinct. [cite_start]Channel is "Frequency Selective"[cite: 1067].
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-res')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-res" role="img" aria-label="Graph showing received signal amplitude over time. Pulses either overlap (Narrowband) or are distinct (Wideband) based on bandwidth settings."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-res')">Download</button>
+                </div>
+                <div style="margin-top:10px; font-size:1.1rem; font-weight:bold; color:#2c3e50;">
+                    Regime: <span id="res-regime" style="color:#2c3e50">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="stats" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Fading Statistics</h3>
+                <p class="subtitle">Rayleigh (NLOS) vs Rician (LOS) Distributions.</p>
+                
+                <div class="control-group">
+                    <label for="sl-st-k">Rice Factor (K) <span id="val-st-k" class="value-badge">0 (Rayleigh)</span></label>
+                    <input type="range" id="sl-st-k" min="0" max="20" step="1" value="0">
+                </div>
+                <div class="control-group">
+                    <label for="sl-st-p">Average Power (&Omega;) <span id="val-st-p" class="value-badge">1.0</span></label>
+                    <input type="range" id="sl-st-p" min="0.5" max="2.0" step="0.1" value="1.0">
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn" onclick="app.genStats()">Resample</button>
+                    <button class="btn btn-secondary" onclick="app.resetStats()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-st">
+                    <strong>Rayleigh ($K=0$):</strong> NLOS. [cite_start]Magnitude $|h|$ follows Rayleigh PDF[cite: 1174].<br>
+                    <strong>Rician ($K>0$):</strong> Strong LOS. [cite_start]$K = P_{LOS} / P_{Scattered}$[cite: 1267].<br>
+                    As $K \to \infty$, distribution becomes Gaussian around $\sqrt{K}$.
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-st')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-st" role="img" aria-label="Histogram of channel envelope amplitude compared to theoretical Rician/Rayleigh PDF curve."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-st')">Download</button>
+                </div>
+                <div style="font-size:0.8rem; color:#666; margin-top:5px;">
+                    Bars: Simulation (2000 samples). Line: Theoretical PDF.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="jakes" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Time Correlation</h3>
+                <p class="subtitle">How fast does the channel fade?</p>
+                
+                <div class="control-group">
+                    <label for="sl-jk-fd">Doppler Freq ($f_D$) <span id="val-jk-fd" class="value-badge">50 Hz</span></label>
+                    <input type="range" id="sl-jk-fd" min="5" max="200" step="5" value="50">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetJakes()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-jk">
+                    [cite_start]<strong>Jakes Model:</strong> Autocorrelation $A(\Delta t) = J_0(2\pi f_D \Delta t)$[cite: 1389].<br>
+                    Channel decorrelates when $J_0 \approx 0$ ($2\pi f_D \Delta t \approx 2.4$).<br>
+                    [cite_start]This confirms $T_c \approx 0.4 / f_D$[cite: 1404].
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-jk')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-jk" role="img" aria-label="Two plots: Top shows received power fading over 1 second. Bottom shows Jakes autocorrelation function with zero crossing indicated."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-jk')">Download</button>
+                </div>
+                <div style="font-size:0.8rem; color:#666; margin-top:5px;">
+                    Top: Power vs Time. Bottom: Autocorrelation $J_0$ (Red dot = $T_c$).
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div style="max-width:1100px; margin: 2rem auto; border-top:1px solid #ddd; padding-top:1rem; color:#7f8c8d; font-size:0.9rem;">
+    <h4>References & Instructor Notes</h4>
+    <ul>
+        <li><strong>[1019] Doppler Shift:</strong> Lecture 3, Slide 4 (Derivation).</li>
+        <li><strong>[1060] Narrowband:</strong> Lecture 3, Slide 6.</li>
+        <li><strong>[1174] Rayleigh:</strong> Lecture 3, Slide 12.</li>
+        <li><strong>[1267] Rician:</strong> Lecture 3, Slide 16.</li>
+        <li><strong>[1404] Coherence Time:</strong> Lecture 3, Slide 21.</li>
+    </ul>
+    <p><strong>Tip:</strong> In Tab 1, set Angle to 90&deg; to show zero Doppler. In Tab 4, increase $f_D$ to see how the fading speeds up (fast trains).</p>
+</div>
+
+<script>
+const app = {
+    currentTab: 'doppler',
+    animating: false,
+    frameRequest: null,
+    time: 0,
+    
+    // Data storage
+    jakesData: [],
+    statsData: [],
+
+    init: function() {
+        this.setupListeners();
+        this.genStats(); // Initial stats
+        this.genJakesTrace(); // Initial Jakes
+        this.switchTab('doppler'); 
+        
+        // Debounced Resize
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                this.redrawActiveTab();
+            }, 100);
+        });
+    },
+
+    setupListeners: function() {
+        this.bindSlider('sl-dop-v', 'val-dop-v', ' km/h', () => {});
+        this.bindSlider('sl-dop-fc', 'val-dop-fc', ' GHz', () => {});
+        this.bindSlider('sl-dop-theta', 'val-dop-theta', ' deg', () => {});
+        
+        this.bindSlider('sl-res-tm', 'val-res-tm', ' µs', () => this.drawResolvability());
+        this.bindSlider('sl-res-bw', 'val-res-bw', ' MHz', () => this.drawResolvability());
+        
+        this.bindSlider('sl-st-k', 'val-st-k', '', () => this.genStats());
+        this.bindSlider('sl-st-p', 'val-st-p', '', () => this.genStats());
+        
+        this.bindSlider('sl-jk-fd', 'val-jk-fd', ' Hz', () => this.genJakesTrace());
+    },
+
+    bindSlider: function(id, dispId, unit, callback) {
+        const el = document.getElementById(id);
+        const disp = document.getElementById(dispId);
+        if(!el) return;
+        
+        el.addEventListener('input', () => {
+            let val = parseFloat(el.value);
+            // Custom display formatting
+            if(id === 'sl-st-k' && val === 0) disp.textContent = "0 (Rayleigh)";
+            else if(unit === ' MHz' && val < 1) disp.textContent = Math.round(val*1000) + " kHz";
+            else disp.textContent = val + unit;
+            
+            callback();
+        });
+    },
+
+    // --- STATE MANAGEMENT ---
+    switchTab: function(tabId) {
+        this.currentTab = tabId;
+        
+        // UI Updates
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+        const activeBtn = document.getElementById('btn-' + tabId);
+        activeBtn.classList.add('active');
+        activeBtn.setAttribute('aria-selected', 'true');
+
+        // Animation Loop Control
+        if (tabId === 'doppler') {
+            this.startAnimation();
+        } else {
+            this.stopAnimation();
+            // Allow DOM to update then redraw
+            requestAnimationFrame(() => this.redrawActiveTab());
+        }
+    },
+
+    // --- RESET FUNCTIONS ---
+    resetDoppler: function() {
+        document.getElementById('sl-dop-v').value = 50;
+        document.getElementById('sl-dop-fc').value = 2.0;
+        document.getElementById('sl-dop-theta').value = 0;
+        // Trigger updates
+        ['sl-dop-v','sl-dop-fc','sl-dop-theta'].forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
+    },
+    resetResolvability: function() {
+        document.getElementById('sl-res-tm').value = 2.0;
+        document.getElementById('sl-res-bw').value = 0.1;
+        ['sl-res-tm','sl-res-bw'].forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
+    },
+    resetStats: function() {
+        document.getElementById('sl-st-k').value = 0;
+        document.getElementById('sl-st-p').value = 1.0;
+        ['sl-st-k','sl-st-p'].forEach(id => document.getElementById(id).dispatchEvent(new Event('input')));
+    },
+    resetJakes: function() {
+        document.getElementById('sl-jk-fd').value = 50;
+        document.getElementById('sl-jk-fd').dispatchEvent(new Event('input'));
+    },
+
+    // --- UTILS ---
+    toggle: function(id) {
+        const el = document.getElementById(id);
+        if(el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    },
+
+    resizeCanvas: function(canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        
+        if (canvas.width !== rect.width * dpr || canvas.height !== 400 * dpr) {
+            canvas.width = rect.width * dpr;
+            canvas.height = 400 * dpr;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        return { w: rect.width, h: 400, ctx: ctx };
+    },
+
+    downloadCanvas: function(id) {
+        const canvas = document.getElementById(id);
+        const link = document.createElement('a');
+        link.download = id + '_visualization.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    },
+
+    redrawActiveTab: function() {
+        if(this.currentTab === 'resolvability') this.drawResolvability();
+        else if(this.currentTab === 'stats') this.drawStats();
+        else if(this.currentTab === 'jakes') this.drawJakes();
+        // Doppler is animated
+    },
+
+    // --- ANIMATION ---
+    startAnimation: function() {
+        if(this.animating) return;
+        this.animating = true;
+        const loop = () => {
+            if(!this.animating) return;
+            this.drawDoppler();
+            requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    },
+    stopAnimation: function() {
+        this.animating = false;
+    },
+
+    // --- TAB 1: DOPPLER LOGIC ---
+    drawDoppler: function() {
+        const cv = document.getElementById('cv-dop');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const v = parseFloat(document.getElementById('sl-dop-v').value);
+        const fc = parseFloat(document.getElementById('sl-dop-fc').value);
+        const theta = parseFloat(document.getElementById('sl-dop-theta').value);
+
+        const v_ms = v / 3.6;
+        const lambda = 3e8 / (fc * 1e9);
+        const fd = (v_ms / lambda) * Math.cos(theta * Math.PI / 180);
+        const Tc = Math.abs(fd) > 1e-2 ? (0.4 / Math.abs(fd)) * 1000 : 9999;
+
+        document.getElementById('res-fd').innerText = fd.toFixed(1) + " Hz";
+        document.getElementById('res-tc').innerText = Tc > 5000 ? "> 5 sec" : Tc.toFixed(1) + " ms";
+
+        // Visual speed scaling: 1Hz = 0.05 rad/frame
+        this.time += fd * 0.05;
+
+        ctx.clearRect(0,0,w,h);
+        const cx = w/2, cy = h/2, r = 100;
+
+        // Circle
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+
+        // Vector
+        const px = cx + r * Math.cos(this.time);
+        const py = cy - r * Math.sin(this.time);
+
+        ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px, py); ctx.stroke();
+        
+        // Arrowhead
+        const angle = Math.atan2(cy - py, px - cx);
+        const head = 15;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - head * Math.cos(angle - Math.PI/6), py + head * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(px - head * Math.cos(angle + Math.PI/6), py + head * Math.sin(angle + Math.PI/6));
+        ctx.fillStyle = "#2c3e50"; ctx.fill();
+
+        ctx.fillStyle = "#7f8c8d"; ctx.textAlign = "center";
+        ctx.fillText("Phasor Rotation", cx, cy + r + 30);
+    },
+
+    // --- TAB 2: RESOLVABILITY LOGIC ---
+    drawResolvability: function() {
+        const cv = document.getElementById('cv-res');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const Tm = parseFloat(document.getElementById('sl-res-tm').value);
+        const B = parseFloat(document.getElementById('sl-res-bw').value);
+        const Tp = 1 / B; 
+
+        // Paths
+        const paths = [{t:0, a:1}, {t:Tm*0.5, a:0.7}, {t:Tm, a:0.5}];
+        
+        ctx.clearRect(0,0,w,h);
+        
+        const xMin = -1, xMax = Tm + 3;
+        const sigma = Tp / 2.355; // Gaussian width
+
+        ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        for(let px=0; px<w; px++) {
+            const t = xMin + (px/w) * (xMax - xMin);
+            let val = 0;
+            paths.forEach(p => {
+                val += p.a * Math.exp( -0.5 * ((t - p.t)/sigma)**2 );
+            });
+            const y = h - 50 - (val * 180);
+            if(px===0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+        }
+        ctx.stroke();
+
+        // Components
+        ctx.lineWidth = 1; ctx.setLineDash([5,5]);
+        paths.forEach((p, i) => {
+            ctx.strokeStyle = i===0 ? "#3498db" : "#95a5a6";
+            ctx.beginPath();
+            for(let px=0; px<w; px++) {
+                const t = xMin + (px/w) * (xMax - xMin);
+                const val = p.a * Math.exp( -0.5 * ((t - p.t)/sigma)**2 );
+                const y = h - 50 - (val * 180);
+                if(px===0) ctx.moveTo(px, y); else ctx.lineTo(px, y);
+            }
+            ctx.stroke();
+        });
+        ctx.setLineDash([]);
+
+        // Text
+        const regime = (Tp < Tm) ? "Wideband (Frequency Selective)" : "Narrowband (Flat Fading)";
+        const el = document.getElementById('res-regime');
+        el.innerText = regime;
+        el.style.color = (Tp < Tm) ? "#e67e22" : "#27ae60";
+        
+        ctx.fillStyle = "#333";
+        ctx.fillText("Time (µs)", w/2, h-10);
+    },
+
+    // --- TAB 3: STATS LOGIC ---
+    genStats: function() {
+        const K = parseFloat(document.getElementById('sl-st-k').value);
+        const P = parseFloat(document.getElementById('sl-st-p').value);
+        
+        const sigma = Math.sqrt(P / (2*(K+1)));
+        const s = Math.sqrt(K * 2 * sigma**2);
+        
+        const samples = [];
+        let maxVal = 0;
+        for(let i=0; i<2000; i++) {
+            const nr = sigma * this.randn();
+            const ni = sigma * this.randn();
+            const r = Math.sqrt((s + nr)**2 + ni**2);
+            samples.push(r);
+            if(r > maxVal) maxVal = r;
+        }
+        
+        const bins = 50;
+        const hist = new Array(bins).fill(0);
+        const binW = (maxVal * 1.1) / bins;
+        samples.forEach(v => {
+            const idx = Math.floor(v / binW);
+            if(idx < bins) hist[idx]++;
+        });
+        
+        this.statsData = { hist, binW, K, sigma, s, maxVal };
+        if(this.currentTab === 'stats') this.drawStats();
+    },
+
+    drawStats: function() {
+        const cv = document.getElementById('cv-st');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+        const d = this.statsData;
+        if(!d.hist) return;
+
+        ctx.clearRect(0,0,w,h);
+        
+        const barW = (w - 60) / d.hist.length;
+        const maxCount = Math.max(...d.hist);
+        const scaleY = (h - 60) / maxCount;
+
+        ctx.fillStyle = "#3498db";
+        d.hist.forEach((c, i) => {
+            ctx.fillRect(40 + i*barW, h - 30 - c*scaleY, barW-1, c*scaleY);
+        });
+
+        // PDF
+        ctx.strokeStyle = "#c0392b"; ctx.lineWidth = 3;
+        ctx.beginPath();
+        const plotMaxX = d.maxVal * 1.1;
+        const scaleX = (w - 60) / plotMaxX;
+        const norm = 2000 * d.binW * scaleY; // Area normalization
+
+        for(let x=0; x<plotMaxX; x+=0.05) {
+            let pdf = 0;
+            if(x >= 0) {
+                const z = (x * d.s) / (d.sigma**2);
+                const term1 = x / (d.sigma**2);
+                
+                // Robust Rician PDF
+                if (z > 50) {
+                    // Asymptotic expansion I0(z) ~ exp(z)/sqrt(2pi z)
+                    // exp term becomes: -((x-s)^2) / 2sig^2
+                    const exponent = -((x - d.s)**2) / (2 * d.sigma**2);
+                    const denom = Math.sqrt(2 * Math.PI * z);
+                    pdf = term1 * Math.exp(exponent) / denom;
+                } else {
+                    const I0 = this.besselI0(z);
+                    pdf = term1 * Math.exp(-(x**2 + d.s**2)/(2*d.sigma**2)) * I0;
+                }
+            }
+            const px = 40 + x*scaleX;
+            const py = h - 30 - pdf*norm;
+            if(x===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+    },
+
+    randn: function() {
+        let u=0, v=0;
+        while(u===0) u=Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * Math.random());
+    },
+
+    besselI0: function(x) {
+        if(x < 15) {
+            let s=1, t=1;
+            for(let k=1; k<25; k++) {
+                t *= (x/2)**2 / (k*k);
+                s += t;
+                if(t < 1e-9) break;
+            }
+            return s;
+        }
+        return Math.exp(x) / Math.sqrt(2 * Math.PI * x);
+    },
+
+    // --- TAB 4: JAKES LOGIC ---
+    genJakesTrace: function() {
+        const fd = parseFloat(document.getElementById('sl-jk-fd').value);
+        const N = 1000; 
+        const trace = [];
+        const Np = 20;
+        
+        for(let t=0; t<N; t++) {
+            const time = t / 1000; // 1ms steps
+            let re=0, im=0;
+            for(let n=1; n<=Np; n++) {
+                const alpha = (2*Math.PI*n - Math.PI)/(4*Np);
+                const phi = n*n; // Deterministic phase
+                const dop = 2*Math.PI*fd * Math.cos(alpha) * time;
+                re += Math.cos(dop + phi);
+                im += Math.sin(dop + phi);
+            }
+            trace.push((re**2 + im**2)/Np);
+        }
+        this.jakesData = { trace, fd };
+        if(this.currentTab === 'jakes') this.drawJakes();
+    },
+
+    drawJakes: function() {
+        const cv = document.getElementById('cv-jk');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+        const { trace, fd } = this.jakesData;
+
+        ctx.clearRect(0,0,w,h);
+
+        // Top: Fading
+        const h1 = h/2 - 20;
+        const sX = w / trace.length;
+        const sY = (h1 - 20) / Math.max(...trace);
+        
+        ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        trace.forEach((v, i) => {
+            if(i===0) ctx.moveTo(0, h1 - v*sY);
+            else ctx.lineTo(i*sX, h1 - v*sY);
+        });
+        ctx.stroke();
+        ctx.fillStyle = "#333";
+        ctx.fillText("Received Power (1 sec)", 10, 20);
+
+        // Bottom: Autocorrelation
+        const h2 = h/2;
+        const yBase = h - 40;
+        const maxDt = 0.05; // 50ms
+        
+        ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        let zX = -1;
+        for(let px=0; px<w-40; px++) {
+            const dt = (px/(w-40)) * maxDt;
+            const arg = 2*Math.PI*fd*dt;
+            
+            // J0 approx
+            let val = 0;
+            if(arg < 15) {
+                let s=0;
+                for(let k=0; k<15; k++) {
+                    let fact=1; for(let f=1; f<=k; f++) fact*=f;
+                    s += ((-1)**k * (arg/2)**(2*k)) / (fact**2);
+                }
+                val = s;
+            } else {
+                val = Math.sqrt(2/(Math.PI*arg)) * Math.cos(arg - Math.PI/4);
+            }
+            
+            if(zX < 0 && arg > 2.405) zX = px; // First zero
+            
+            const y = yBase - (h2-60)*val/2 - (h2-60)/2; // Center in bottom area
+            const amp = h2 - 60;
+            const plotY = (h - 20 - amp/2) - (val * amp/1.5);
+
+            if(px===0) ctx.moveTo(20, plotY); else ctx.lineTo(20+px, plotY);
+        }
+        ctx.stroke();
+
+        // Zero crossing
+        if(zX > 0) {
+            const amp = h2 - 60;
+            const zY = (h - 20 - amp/2);
+            ctx.fillStyle = "rgba(231, 76, 60, 0.5)";
+            ctx.beginPath(); ctx.arc(20+zX, zY, 6, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#c0392b";
+            ctx.fillText("Tc", 20+zX, zY - 10);
+        }
+        
+        ctx.fillStyle = "#333";
+        ctx.fillText("Autocorrelation J0", 20, h2 + 20);
+        ctx.fillText("Time Lag 0 to 50ms", w/2, h-5);
+    }
+};
+
+app.init();
+</script>
+
+</body>
+</html>

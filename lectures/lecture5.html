@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance & Diversity - Interactive Lecture 5</title>
+    <style>
+        :root {
+            /* Palette */
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --light: #ecf0f1;
+            --text: #333;
+            --border: #bdc3c7;
+            --success: #27ae60;
+            --danger: #c0392b;
+            --warning: #f39c12;
+            
+            /* Trace Colors - Matching JS Hex Codes */
+            --trace-1: #2980b9;
+            --trace-2: #c0392b;
+            --trace-3: #8e44ad;
+            --trace-comb: #27ae60;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .subtitle { font-size: 0.9rem; opacity: 0.8; }
+
+        /* Navigation */
+        .tab-nav {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { background-color: var(--light); }
+        .tab-btn:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+        .tab-btn.active {
+            border-bottom-color: var(--accent);
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* Content */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Controls Panel */
+        .panel {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid var(--light);
+        }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            display: block;
+        }
+        .value-badge {
+            background: var(--light);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: var(--primary);
+            font-size: 0.85rem;
+        }
+
+        /* Visualization Area */
+        .viz-container {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            min-height: 450px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            max-height: 400px;
+            background-color: #fff;
+        }
+
+        /* Theory Box */
+        .theory-box {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--accent);
+            font-size: 0.9rem;
+            display: none; 
+            line-height: 1.6;
+        }
+        .toggle-link {
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-decoration: underline;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+        
+        /* Buttons */
+        .btn-group { display: flex; gap: 10px; margin-top: 1rem; }
+        .btn {
+            flex: 1;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn:hover { background-color: #2980b9; }
+        .btn-secondary { background: #95a5a6; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .btn-outline { 
+            background: transparent; 
+            border: 1px solid var(--border); 
+            color: var(--text); 
+            margin-top: 5px;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            width: auto;
+            cursor: pointer;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-layout { grid-template-columns: 1fr; }
+            .tab-btn { padding: 0.8rem 1rem; font-size: 0.9rem; }
+            header { padding: 1rem; }
+            .viz-container { min-height: 350px; }
+        }
+    </style>
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+    </script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Performance & Diversity</h1>
+        <div class="subtitle">Lecture 5: BER, Outage & Combining Techniques</div>
+    </div>
+    <div style="text-align: right; font-size: 0.8rem;">
+        SSY135<br>Interactive Lab
+    </div>
+</header>
+
+<nav class="tab-nav" role="tablist">
+    <button id="btn-ber" class="tab-btn active" role="tab" aria-selected="true" onclick="app.switchTab('ber')">1. Fading Impact (BER)</button>
+    <button id="btn-sim" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('sim')">2. Diversity Simulator</button>
+    <button id="btn-mrc" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('mrc')">3. MRC Analysis</button>
+    <button id="btn-compare" class="tab-btn" role="tab" aria-selected="false" onclick="app.switchTab('compare')">4. SC vs MRC</button>
+</nav>
+
+<div class="container">
+
+    <div id="ber" class="tab-content active" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Fading Performance</h3>
+                <p class="subtitle">Why fading is a disaster for BER.</p>
+                
+                <div class="control-group">
+                    <label for="sl-ber-snr">Avg SNR ($\bar{\gamma}_b$) <span id="val-ber-snr" class="value-badge">15 dB</span></label>
+                    <input type="range" id="sl-ber-snr" min="0" max="30" step="1" value="15">
+                </div>
+                <div class="control-group">
+                    <label for="sl-ber-thresh">Outage Threshold <span id="val-ber-thresh" class="value-badge">5 dB</span></label>
+                    <input type="range" id="sl-ber-thresh" min="-5" max="20" step="1" value="5">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetBer()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-ber">
+                    <strong>AWGN BER:</strong> $P_b = Q(\sqrt{2\gamma_b})$. Exponential decay (Fast).<br>
+                    <strong>Rayleigh BER:</strong> $\bar{P}_b \approx \frac{1}{4\bar{\gamma}_b}$. Linear decay (Slow).<br>
+                    <strong>Implication:</strong> To get $10^{-3}$ BER, AWGN needs ~7dB. Rayleigh needs ~24dB! This gap is the "fading penalty".
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-ber')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-ber" role="img" aria-label="Dual plot: Top shows BER vs SNR waterfall curve comparing AWGN and Rayleigh. Bottom shows Probability Density Function of SNR with outage region shaded."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-ber')">Download</button>
+                </div>
+                <div style="margin-top:10px; font-size:0.9rem; color:#555; text-align:center;">
+                    Current Outage Prob: <strong id="res-outage" style="color:var(--danger)">-</strong><br>
+                    Fading Penalty (at $10^{-3}$): <strong id="res-penalty" style="color:var(--primary)">~17 dB</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sim" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Diversity in Action</h3>
+                <p class="subtitle">"The Wisdom of Crowds": Independent paths don't fade simultaneously.</p>
+                
+                <div class="control-group">
+                    <label for="sl-sim-m">Branches (M) <span id="val-sim-m" class="value-badge">3</span></label>
+                    <input type="range" id="sl-sim-m" min="1" max="4" step="1" value="3">
+                </div>
+                <div class="control-group">
+                    <label for="sl-sim-speed">Animation Speed <span id="val-sim-speed" class="value-badge">3</span></label>
+                    <input type="range" id="sl-sim-speed" min="1" max="5" step="1" value="3">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetSim()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-sim">
+                    <strong>Selection Combining (SC):</strong> The receiver picks the strongest signal: $P_{SC}(t) = \max_i |h_i(t)|^2$.<br>
+                    <strong>Why it works:</strong> The probability that <i>all</i> antennas are in a deep fade simultaneously is very low ($p^M$).<br>
+                    <br>
+                    Note: This simulation assumes independent fading (spacing $> \lambda/2$).
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-sim')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-sim" role="img" aria-label="Animation showing M independent fading signals varying over time, and a combined signal that tracks the maximum."></canvas>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:var(--trace-1)"></span> Branch 1</div>
+                    <div class="legend-item"><span class="dot" style="background:var(--trace-2)"></span> Branch 2</div>
+                    <div class="legend-item"><span class="dot" style="background:var(--trace-3)"></span> Branch 3</div>
+                    <div class="legend-item"><span class="dot" style="background:var(--trace-comb)"></span> Combined (SC)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mrc" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Maximal Ratio Combining</h3>
+                <p class="subtitle">The optimal combiner: Array Gain + Diversity Gain.</p>
+                
+                <div class="control-group">
+                    <label for="sl-mrc-m">Antennas (M) <span id="val-mrc-m" class="value-badge">2</span></label>
+                    <input type="range" id="sl-mrc-m" min="1" max="10" step="1" value="2">
+                </div>
+                <div class="control-group">
+                    <label for="sl-mrc-snr">Branch SNR ($\bar{\gamma}$) <span id="val-mrc-snr" class="value-badge">5 dB</span></label>
+                    <input type="range" id="sl-mrc-snr" min="0" max="15" step="1" value="5">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetMrc()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-mrc">
+                    <strong>Output SNR:</strong> $\gamma_\Sigma = \sum_{i=1}^M \gamma_i$.<br>
+                    <strong>Array Gain:</strong> Mean shifts right by factor $M$ (Linear gain).<br>
+                    <strong>Diversity Gain:</strong> Distribution becomes narrower. A narrow PDF means reliable communication (low variance).
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-mrc')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-mrc" role="img" aria-label="Plot of Probability Density Function for MRC output SNR. Shows the curve shifting right and narrowing as M increases."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-mrc')">Download</button>
+                </div>
+                <div style="font-size:0.9rem; color:#555; text-align:center; margin-top:5px;">
+                    Mean SNR: <strong id="res-mrc-mean">- dB</strong> (Array Gain)<br>
+                    Variance: <strong id="res-mrc-var">-</strong> (Diversity Gain)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="compare" class="tab-content" role="tabpanel">
+        <div class="grid-layout">
+            <div class="panel">
+                <h3>Comparison: SC vs MRC</h3>
+                <p class="subtitle">Trade-off: Complexity vs Performance.</p>
+                
+                <div class="control-group">
+                    <label for="sl-comp-m">Antennas (M) <span id="val-comp-m" class="value-badge">2</span></label>
+                    <input type="range" id="sl-comp-m" min="1" max="5" step="1" value="2">
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="app.resetCompare()">Reset</button>
+                </div>
+
+                <div class="theory-box" id="th-comp">
+                    <strong>Selection Combining (SC):</strong> Simple. Same Diversity Gain (slope) as MRC, but less Array Gain ($ \sum 1/k $ vs $M$).<br>
+                    <strong>MRC:</strong> Optimal. Requires coherent phase/amplitude estimation (complex).<br>
+                    <strong>Takeaway:</strong> Both fix the error floor (slope), but MRC is more power efficient (shift).
+                </div>
+                <div class="toggle-link" onclick="app.toggle('th-comp')">Show/Hide Theory</div>
+            </div>
+
+            <div class="viz-container">
+                <canvas id="cv-compare" role="img" aria-label="CDF plot comparing Outage Probability of Single Branch, Selection Combining, and MRC."></canvas>
+                <div style="position:absolute; top:10px; right:10px;">
+                    <button class="btn-outline" onclick="app.downloadCanvas('cv-compare')">Download</button>
+                </div>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#7f8c8d"></span> No Diversity (M=1)</div>
+                    <div class="legend-item"><span class="dot" style="background:#e67e22"></span> Selection Combining</div>
+                    <div class="legend-item"><span class="dot" style="background:#2980b9"></span> MRC (Optimal)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div style="max-width:1100px; margin: 2rem auto; border-top:1px solid #ddd; padding-top:1rem; color:#7f8c8d; font-size:0.9rem;">
+    <h4>References & Instructor Notes</h4>
+    <ul>
+        <li><strong>[2196] Exact BER:</strong> Lecture 5, Slide 11. $\bar{P}_s = 0.5(1 - \sqrt{\gamma/(1+\gamma)})$.</li>
+        <li><strong>[2178] Outage Probability:</strong> Lecture 5, Slide 10. $P_{out} = 1 - e^{-\gamma_0/\bar{\gamma}}$.</li>
+        <li><strong>[2335] MRC Outage:</strong> Lecture 5, Slide 19. Uses exact finite sum formula for integer M.</li>
+    </ul>
+    <p><strong>Tip:</strong> In Tab 1, switch between SNR=5dB and 25dB. Notice how the outage probability (red area) vanishes exponentially. In Tab 2, focus on the green line; notice it almost never touches the bottom axis (deep fade) compared to the blue/red lines.</p>
+</div>
+
+<noscript>
+    <div style="padding: 2rem; text-align:center; color: red; border: 1px solid red; margin: 20px;">
+        <strong>JavaScript Required:</strong> Interactive visualizations require JavaScript to run. Please enable it in your browser settings.
+    </div>
+</noscript>
+
+<script>
+// Polyfill for Math.erfc (for older browsers)
+if (!Math.erfc) {
+    Math.erfc = function(x) {
+        var z = Math.abs(x);
+        var t = 1 / (1 + z / 2);
+        var r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+        return x >= 0 ? r : 2 - r;
+    };
+}
+
+const app = {
+    currentTab: 'ber',
+    animating: false,
+    frameRequest: null,
+    
+    // Sim State
+    simTime: 0,
+    simData: [], 
+    
+   init: function() {
+        this.setupListeners();
+        // Force initial population of simData
+        this.simData = new Array(200).fill(null).map((_, i) => {
+            // Use consistent speed (0.05) but different seeds (100, 200, 300)
+            return {
+                b1: this.jakesSample(i*0.05, 100), 
+                b2: this.jakesSample(i*0.05, 200),
+                b3: this.jakesSample(i*0.05, 300)
+            };
+        });
+        
+        this.switchTab('ber');
+        
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => this.redrawActiveTab(), 100);
+        });
+    },
+    
+    setupListeners: function() {
+        this.bindSlider('sl-ber-snr', 'val-ber-snr', ' dB', () => this.drawBer());
+        this.bindSlider('sl-ber-thresh', 'val-ber-thresh', ' dB', () => this.drawBer());
+
+        this.bindSlider('sl-sim-m', 'val-sim-m', '', null);
+        this.bindSlider('sl-sim-speed', 'val-sim-speed', '', null);
+
+        this.bindSlider('sl-mrc-m', 'val-mrc-m', '', () => this.drawMrc());
+        this.bindSlider('sl-mrc-snr', 'val-mrc-snr', ' dB', () => this.drawMrc());
+
+        this.bindSlider('sl-comp-m', 'val-comp-m', '', () => this.drawCompare());
+    },
+
+    bindSlider: function(id, dispId, unit, callback) {
+        const el = document.getElementById(id);
+        const disp = document.getElementById(dispId);
+        if(!el) return;
+        
+        el.addEventListener('input', () => {
+            let val = parseFloat(el.value);
+            disp.textContent = val + unit;
+            if(callback) callback();
+        });
+    },
+
+    // --- TAB LOGIC ---
+    switchTab: function(tabId) {
+        this.currentTab = tabId;
+        
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.setAttribute('aria-selected', 'false');
+        });
+        document.getElementById('btn-'+tabId).classList.add('active');
+        document.getElementById('btn-'+tabId).setAttribute('aria-selected', 'true');
+
+        if(tabId === 'sim') {
+            this.startAnimation();
+        } else {
+            this.stopAnimation();
+            this.redrawActiveTab();
+        }
+    },
+
+    startAnimation: function() {
+        if(this.animating) return;
+        this.animating = true;
+        const loop = () => {
+            if(!this.animating) return;
+            this.drawSim();
+            this.frameRequest = requestAnimationFrame(loop);
+        };
+        this.frameRequest = requestAnimationFrame(loop);
+    },
+
+    stopAnimation: function() {
+        this.animating = false;
+        if(this.frameRequest) cancelAnimationFrame(this.frameRequest);
+    },
+
+    redrawActiveTab: function() {
+        if(this.currentTab === 'ber') this.drawBer();
+        if(this.currentTab === 'mrc') this.drawMrc();
+        if(this.currentTab === 'compare') this.drawCompare();
+    },
+
+    // --- RESETS ---
+    resetBer: function() {
+        this.setSlider('sl-ber-snr', 15);
+        this.setSlider('sl-ber-thresh', 5);
+        this.drawBer();
+    },
+    resetSim: function() {
+        this.setSlider('sl-sim-m', 3);
+        this.setSlider('sl-sim-speed', 3);
+    },
+    resetMrc: function() {
+        this.setSlider('sl-mrc-m', 2);
+        this.setSlider('sl-mrc-snr', 5);
+        this.drawMrc();
+    },
+    resetCompare: function() {
+        this.setSlider('sl-comp-m', 2);
+        this.drawCompare();
+    },
+    setSlider: function(id, val) {
+        const el = document.getElementById(id);
+        el.value = val;
+        el.dispatchEvent(new Event('input'));
+    },
+
+    // --- CANVAS UTILS ---
+    resizeCanvas: function(canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        if (canvas.width !== rect.width * dpr || canvas.height !== 400 * dpr) {
+            canvas.width = rect.width * dpr;
+            canvas.height = 400 * dpr;
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        return { w: rect.width, h: 400, ctx: ctx };
+    },
+
+    downloadCanvas: function(id) {
+        const canvas = document.getElementById(id);
+        const link = document.createElement('a');
+        link.download = id + '_visualization.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    },
+
+    toggle: function(id) {
+        const el = document.getElementById(id);
+        if(el) el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    },
+
+    // --- MATH ---
+    Q: function(x) {
+        return 0.5 * Math.erfc(x / Math.sqrt(2));
+    },
+    
+    factCache: [1, 1],
+    factorial: function(n) {
+        if (this.factCache[n] !== undefined) return this.factCache[n];
+        let f = this.factCache[this.factCache.length - 1];
+        for(let i = this.factCache.length; i <= n; i++) f *= i;
+        this.factCache[n] = f;
+        return f;
+    },
+
+jakesSample: function(t, seed) {
+    // Deterministic but unique generator per seed
+    const hash = (n) => {
+        let s = Math.sin(n * 12.9898 + seed * 78.233) * 43758.5453;
+        return s - Math.floor(s);
+    };
+    
+    let re = 0, im = 0;
+    const N = 10; // Number of oscillators
+    const fd = 0.5; // Reduced Doppler frequency for smoother animation
+    
+    for(let n=1; n<=N; n++) {
+        // Unique angle of arrival per branch AND per oscillator
+        const alpha = 2*Math.PI * hash(n);
+        
+        // Unique initial phase
+        const phi = 2*Math.PI * hash(n + 1000);
+        
+        // Time evolution
+        const dop = 2*Math.PI*fd*Math.cos(alpha)*t;
+        
+        re += Math.cos(dop + phi);
+        im += Math.sin(dop + phi);
+    }
+    
+    // Normalize and convert to power (squared magnitude)
+    const magnitude = Math.sqrt(re**2 + im**2) / Math.sqrt(N);
+    
+    // Return power in linear scale (squared)
+    // Add some minimum value to avoid -Infinity in dB
+    const powerLinear = Math.max(magnitude**2, 0.001);
+    
+    return powerLinear;
+},    
+    // --- DRAWING: BER ---
+    drawBer: function() {
+        const cv = document.getElementById('cv-ber');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const avgSnrDb = parseFloat(document.getElementById('sl-ber-snr').value);
+        const threshDb = parseFloat(document.getElementById('sl-ber-thresh').value);
+        const avgSnrLin = Math.pow(10, avgSnrDb/10);
+        const threshLin = Math.pow(10, threshDb/10);
+
+        ctx.clearRect(0,0,w,h);
+        const margin = 50;
+        const topH = (h/2) - 20;
+        const plotW = w - 2*margin;
+        
+        // --- Top Plot: BER vs SNR ---
+        const mapX = (db) => margin + (db/30)*plotW;
+        const mapY = (ber) => {
+            const logBer = Math.log10(Math.max(ber, 1e-6));
+            return margin + topH - ((logBer + 5)/5)*topH;
+        };
+
+        // Grid
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let d=0; d<=30; d+=5) {
+            ctx.moveTo(mapX(d), margin); ctx.lineTo(mapX(d), margin+topH);
+            ctx.fillStyle = "#777"; ctx.fillText(d, mapX(d)-5, margin+topH+15);
+        }
+        for(let l=-5; l<=0; l++) {
+            const y = margin + topH - ((l + 5)/5)*topH;
+            ctx.moveTo(margin, y); ctx.lineTo(margin+plotW, y);
+            ctx.fillText("10^"+l, 5, y+4);
+        }
+        ctx.stroke();
+
+        // Current Avg SNR Marker (Blue Target)
+        const xCur = mapX(avgSnrDb);
+        ctx.strokeStyle = "#2980b9"; ctx.lineWidth = 2; ctx.setLineDash([2,2]);
+        ctx.beginPath(); ctx.moveTo(xCur, margin); ctx.lineTo(xCur, margin+topH); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // AWGN
+        ctx.strokeStyle = "#27ae60"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for(let db=0; db<=30; db+=0.5) {
+            const lin = Math.pow(10, db/10);
+            const ber = this.Q(Math.sqrt(2*lin));
+            const y = mapY(ber);
+            if(db===0) ctx.moveTo(mapX(db), y); else ctx.lineTo(mapX(db), y);
+        }
+        ctx.stroke();
+        ctx.fillStyle="#27ae60"; ctx.fillText("AWGN", mapX(25), mapY(1e-5)-10);
+
+        // Rayleigh Exact
+        ctx.strokeStyle = "#c0392b";
+        ctx.beginPath();
+        for(let db=0; db<=30; db+=0.5) {
+            const lin = Math.pow(10, db/10);
+            // Exact BPSK Rayleigh Formula
+            const ber = 0.5 * (1 - Math.sqrt(lin/(1+lin))); 
+            const y = mapY(ber);
+            if(db===0) ctx.moveTo(mapX(db), y); else ctx.lineTo(mapX(db), y);
+        }
+        ctx.stroke();
+        ctx.fillStyle="#c0392b"; ctx.fillText("Rayleigh", mapX(25), mapY(1e-2));
+
+        // --- Bottom Plot: PDF ---
+        const botY = margin + topH + 40;
+        const botH = h - botY - 30;
+        const maxLinPlot = 4 * avgSnrLin; 
+        
+        ctx.strokeStyle="#333"; ctx.lineWidth=1;
+        ctx.beginPath();
+        ctx.moveTo(margin, botY+botH); ctx.lineTo(margin+plotW, botY+botH);
+        ctx.moveTo(margin, botY+botH); ctx.lineTo(margin, botY);
+        ctx.stroke();
+
+        // PDF Curve
+        ctx.fillStyle = "#2c3e50";
+        ctx.beginPath();
+        const peak = 1/avgSnrLin;
+        for(let px=0; px<plotW; px++) {
+            const gam = (px/plotW) * maxLinPlot;
+            const pdf = (1/avgSnrLin) * Math.exp(-gam/avgSnrLin);
+            const hBar = (pdf/peak) * (botH*0.9);
+            const y = botY + botH - hBar;
+            if(px===0) ctx.moveTo(margin+px, y); else ctx.lineTo(margin+px, y);
+        }
+        ctx.stroke();
+
+        // Outage Fill
+        const xThresh = (threshLin / maxLinPlot) * plotW;
+        if(xThresh > 0 && xThresh < plotW) {
+            ctx.fillStyle = "rgba(192, 57, 43, 0.4)";
+            ctx.beginPath();
+            ctx.moveTo(margin, botY+botH);
+            for(let px=0; px<=xThresh; px++) {
+                const gam = (px/plotW) * maxLinPlot;
+                const pdf = (1/avgSnrLin) * Math.exp(-gam/avgSnrLin);
+                const hBar = (pdf/peak) * (botH*0.9);
+                ctx.lineTo(margin+px, botY + botH - hBar);
+            }
+            ctx.lineTo(margin+xThresh, botY+botH);
+            ctx.fill();
+            
+            ctx.strokeStyle = "#c0392b";
+            ctx.beginPath(); ctx.moveTo(margin+xThresh, botY); ctx.lineTo(margin+xThresh, botY+botH); ctx.stroke();
+            ctx.fillText("Threshold", margin+xThresh+5, botY+20);
+        }
+
+        const outageProb = 1 - Math.exp(-threshLin/avgSnrLin);
+        document.getElementById('res-outage').innerText = (outageProb*100).toFixed(2) + "%";
+        
+        ctx.fillStyle = "#333";
+        ctx.fillText("Instantaneous SNR (Linear)", margin+plotW/2, botY+botH+25);
+    },
+
+    // --- DRAWING: SIMULATOR ---
+drawSim: function() {
+    const cv = document.getElementById('cv-sim');
+    if(!cv) return;
+    const { w, h, ctx } = this.resizeCanvas(cv);
+    
+    const M = parseInt(document.getElementById('sl-sim-m').value);
+    const speed = parseInt(document.getElementById('sl-sim-speed').value);
+    
+    this.simTime += speed * 0.02;
+
+    // Generate new samples (jakesSample returns power in linear scale)
+    const newSample = {
+        b1: this.jakesSample(this.simTime, 100),
+        b2: this.jakesSample(this.simTime, 200),
+        b3: this.jakesSample(this.simTime, 300),
+    };
+    
+    this.simData.push(newSample);
+    if(this.simData.length > 200) this.simData.shift();
+
+    ctx.clearRect(0,0,w,h);
+    
+    const margin = 40;
+    const plotW = w - 2*margin;
+    const plotH = h - 2*margin;
+    const xStep = plotW / 200;
+    
+    // ADJUSTED RANGE: Show from -20 dB to 10 dB (realistic fading range)
+    const yMax = 10, yMin = -20;
+    const mapY = (powerLinear) => {
+        // Convert linear power to dB
+        let db = 10 * Math.log10(Math.max(powerLinear, 1e-10));
+        // Map dB to y-coordinate
+        return margin + ((yMax - db) / (yMax - yMin)) * plotH;
+    };
+
+    // Grid and axes
+    ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margin, margin); ctx.lineTo(margin, margin + plotH);
+    ctx.moveTo(margin, margin + plotH); ctx.lineTo(margin + plotW, margin + plotH);
+    ctx.stroke();
+
+    // Horizontal grid lines (dB levels)
+    ctx.strokeStyle = "#ddd"; ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    for(let db = yMax; db >= yMin; db -= 5) {
+        const y = mapY(Math.pow(10, db/10));
+        ctx.moveTo(margin, y); 
+        ctx.lineTo(margin + plotW, y);
+        
+        // Label
+        ctx.fillStyle = "#666";
+        ctx.fillText(db + " dB", 5, y + 4);
+    }
+    ctx.stroke();
+
+    // Draw each branch
+    const drawTrace = (key, color, width) => {
+        ctx.strokeStyle = color; 
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        
+        this.simData.forEach((d, i) => {
+            let power;
+            if(key === 'comb') {
+                // For SC: take the maximum power among active branches
+                const powers = [];
+                if(M >= 1) powers.push(d.b1);
+                if(M >= 2) powers.push(d.b2);
+                if(M >= 3) powers.push(d.b3);
+                power = Math.max(...powers);
+            } else {
+                power = d[key];
+            }
+            
+            const y = mapY(power);
+            const x = margin + i * xStep;
+            
+            if(i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        
+        ctx.stroke();
+    };
+
+    // Draw individual branches
+    if(M >= 1) drawTrace('b1', '#2980b9', 1.5);
+    if(M >= 2) drawTrace('b2', '#c0392b', 1.5);
+    if(M >= 3) drawTrace('b3', '#8e44ad', 1.5);
+    
+    // Draw combined (SC) signal with thicker line
+    drawTrace('comb', '#27ae60', 2.5);
+    
+    // Axes labels
+    ctx.fillStyle = "#333";
+    ctx.fillText("Time →", margin + plotW/2, h - 10);
+    ctx.save();
+    ctx.translate(15, h/2);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText("Power (dB)", 0, 0);
+    ctx.restore();
+},
+    
+    // --- DRAWING: MRC ---
+    drawMrc: function() {
+        const cv = document.getElementById('cv-mrc');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const M = parseInt(document.getElementById('sl-mrc-m').value);
+        const snrDb = parseFloat(document.getElementById('sl-mrc-snr').value);
+        const snrLin = Math.pow(10, snrDb/10);
+
+        ctx.clearRect(0,0,w,h);
+        const margin = 50;
+        const plotW = w - 2*margin;
+        const plotH = h - 2*margin;
+
+        // X Axis: Combined SNR. Range ~ M*SNR*3. Clamp min to 10
+        const xMax = Math.max(10, 3 * M * snrLin); 
+        
+        ctx.strokeStyle = "#333"; ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(margin, h-margin); ctx.lineTo(w-margin, h-margin);
+        ctx.moveTo(margin, h-margin); ctx.lineTo(margin, margin);
+        ctx.stroke();
+
+        const factM = this.factorial(M-1);
+        const denom = Math.pow(snrLin, M) * factM;
+
+        let maxP = 0;
+        for(let x=0; x<xMax; x+=xMax/100) {
+            const p = Math.pow(x, M-1) * Math.exp(-x/snrLin) / denom;
+            if(p > maxP) maxP = p;
+        }
+
+        ctx.strokeStyle = "#2980b9"; ctx.lineWidth = 3;
+        ctx.beginPath();
+        for(let px=0; px<plotW; px++) {
+            const x = (px/plotW) * xMax;
+            const p = Math.pow(x, M-1) * Math.exp(-x/snrLin) / denom;
+            const py = (h-margin) - (p/maxP)*plotH;
+            if(px===0) ctx.moveTo(margin+px, py); else ctx.lineTo(margin+px, py);
+        }
+        ctx.stroke();
+
+        const mean = M * snrLin;
+        const meanDb = 10*Math.log10(Math.max(mean, 1e-10));
+        const variance = M * snrLin * snrLin; 
+        
+        document.getElementById('res-mrc-mean').innerText = meanDb.toFixed(1) + " dB";
+        document.getElementById('res-mrc-var').innerText = variance.toFixed(1);
+
+        const xMean = (mean / xMax) * plotW;
+        if(xMean < plotW) {
+            ctx.strokeStyle = "#27ae60"; ctx.setLineDash([5,5]);
+            ctx.beginPath(); ctx.moveTo(margin+xMean, margin); ctx.lineTo(margin+xMean, h-margin); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = "#27ae60"; ctx.fillText("Mean", margin+xMean+5, margin+20);
+        }
+        
+        ctx.fillStyle="#333";
+        ctx.fillText("Output SNR (Linear)", w/2, h-10);
+    },
+
+    // --- DRAWING: COMPARE ---
+    drawCompare: function() {
+        const cv = document.getElementById('cv-compare');
+        if(!cv) return;
+        const { w, h, ctx } = this.resizeCanvas(cv);
+
+        const M = parseInt(document.getElementById('sl-comp-m').value);
+        
+        ctx.clearRect(0,0,w,h);
+        const margin = 60;
+        const plotW = w - 2*margin;
+        const plotH = h - 2*margin;
+
+        // X: -10 dB to 20 dB relative to mean
+        const xMinDb = -10, xMaxDb = 20;
+        const yMinLog = -4, yMaxLog = 0; 
+
+        const mapX = (db) => margin + ((db - xMinDb)/(xMaxDb - xMinDb))*plotW;
+        const mapY = (prob) => {
+            const logP = Math.log10(Math.max(prob, 1e-5));
+            return margin + plotH - ((logP - yMinLog)/(yMaxLog - yMinLog))*plotH;
+        };
+
+        // Grid
+        ctx.strokeStyle = "#eee"; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for(let d=xMinDb; d<=xMaxDb; d+=5) {
+            ctx.moveTo(mapX(d), margin); ctx.lineTo(mapX(d), margin+plotH);
+            ctx.fillStyle="#777"; ctx.fillText(d, mapX(d)-5, margin+plotH+20);
+        }
+        for(let l=-4; l<=0; l++) {
+            const y = margin + plotH - ((l - yMinLog)/(yMaxLog - yMinLog))*plotH;
+            ctx.moveTo(margin, y); ctx.lineTo(margin+plotW, y);
+            ctx.fillText("1e"+l, 10, y+4);
+        }
+        ctx.stroke();
+
+        const drawCurve = (color, func) => {
+            ctx.strokeStyle = color; ctx.lineWidth = 3;
+            ctx.beginPath();
+            for(let px=0; px<plotW; px++) {
+                const db = xMinDb + (px/plotW)*(xMaxDb-xMinDb);
+                const x = Math.pow(10, db/10); 
+                const p = func(x);
+                if(p > 1e-5) {
+                    const y = mapY(p);
+                    if(y >= margin) {
+                        if(px===0) ctx.moveTo(margin+px, y); else ctx.lineTo(margin+px, y);
+                    }
+                }
+            }
+            ctx.stroke();
+        };
+
+        // Single Branch (M=1)
+        drawCurve('#7f8c8d', (x) => 1 - Math.exp(-x));
+
+        // SC: P = (1 - exp(-x))^M
+        drawCurve('#e67e22', (x) => Math.pow(1 - Math.exp(-x), M));
+
+        // MRC Exact Finite Sum: 1 - e^-x * Sum(x^k/k!)
+        drawCurve('#2980b9', (x) => {
+            let sum = 0;
+            for(let k=0; k<M; k++) {
+                sum += Math.pow(x, k) / this.factorial(k);
+            }
+            return 1 - Math.exp(-x) * sum;
+        });
+
+        ctx.fillStyle="#333";
+        ctx.fillText("Threshold / Mean SNR (dB)", w/2 - 80, h-10);
+        ctx.save(); ctx.translate(15, h/2); ctx.rotate(-Math.PI/2);
+        ctx.fillText("Outage Probability (Log)", 0, 0); ctx.restore();
+    }
+};
+
+app.init();
+</script>
+
+</body>
+</html>

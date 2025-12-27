@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 8: Multi-user & Adaptation</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #2980b9;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #c0392b;
+            --bg: #f8f9fa;
+            --text: #2c3e50;
+            --border: #bdc3c7;
+        }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        
+        /* Layout */
+        header { background: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { margin: 0; font-size: 1.2rem; }
+        .subtitle { font-size: 0.8rem; opacity: 0.9; }
+        
+        nav { background: white; border-bottom: 1px solid var(--border); padding: 0 1rem; display: flex; gap: 1rem; overflow-x: auto; }
+        .tab-btn { background: none; border: none; padding: 1rem; font-weight: 600; color: #7f8c8d; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn:hover, .tab-btn:focus { color: var(--primary); outline: none; background: #f1f1f1; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        main { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; justify-content: center; }
+        .container { max-width: 1200px; width: 100%; display: grid; gap: 1.5rem; }
+        
+        .panel { display: none; }
+        .panel.active { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; animation: fadein 0.3s; }
+        @media (max-width: 850px) { .panel.active { grid-template-columns: 1fr; } }
+        @keyframes fadein { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Controls */
+        .controls { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: fit-content; }
+        .control-group { margin-bottom: 1.2rem; }
+        label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        input[type="range"] { width: 100%; cursor: pointer; height: 24px; }
+        .badge { background: var(--bg); padding: 2px 8px; border-radius: 4px; font-family: monospace; border: 1px solid var(--border); font-size: 0.9em; }
+
+        /* Radio Group */
+        .radio-group { display: flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 1rem; }
+        .radio-opt { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #f9f9f9; font-size: 0.9rem; transition: 0.2s; }
+        .radio-opt:hover { background: #eee; }
+        .radio-opt.active { background: var(--accent); color: white; font-weight: bold; }
+        .radio-opt:focus { outline: 2px solid var(--primary); z-index: 2; position: relative; }
+        .radio-opt:not(:last-child) { border-right: 1px solid var(--border); }
+
+        button.action-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 5px; transition: background 0.2s; }
+        button.action-btn:hover { background: #34495e; }
+        button.action-btn:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+        button.action-btn.secondary { background: #95a5a6; }
+
+        /* Visualization */
+        .viz-card { background: white; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+        canvas { width: 100%; height: 400px; background: #fff; border: 1px solid #eee; border-radius: 4px; }
+
+        /* Metrics */
+        .metrics-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8f9fa; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #eee; }
+        .metric { text-align: center; }
+        .metric-val { font-weight: bold; font-family: monospace; color: var(--accent); font-size: 1.1em; }
+        .metric-label { font-size: 0.75rem; color: #7f8c8d; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Legend */
+        .legend { display: flex; gap: 15px; justify-content: center; margin-top: 10px; font-size: 0.85rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+
+        /* Theory Box */
+        .theory-box { margin-top: 1rem; padding: 1rem; background: #e8f4f8; border-left: 4px solid var(--accent); font-size: 0.9rem; line-height: 1.5; display: none; }
+        .toggle-theory { background: none; border: none; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: 0.85rem; padding: 0; margin-top: 10px; }
+    </style>
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      }
+    };
+    </script>    
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Lecture 8: Multi-user & Adaptation</h1>
+        <div class="subtitle">Cellular Planning, Aloha & AMC</div>
+    </div>
+    <div style="text-align: right; font-size: 0.8rem;">SSY135 Interactive v2.0</div>
+</header>
+
+<nav aria-label="Module Navigation">
+    <button class="tab-btn active" onclick="app.setTab('access')" id="btn-access">1. Multiple Access</button>
+    <button class="tab-btn" onclick="app.setTab('cells')" id="btn-cells">2. Cellular Reuse</button>
+    <button class="tab-btn" onclick="app.setTab('aloha')" id="btn-aloha">3. Random Access</button>
+    <button class="tab-btn" onclick="app.setTab('amc')" id="btn-amc">4. Link Adaptation</button>
+</nav>
+
+<main>
+    <div class="container">
+
+        <section id="tab-access" class="panel active" aria-labelledby="btn-access">
+            <div class="controls">
+                <h3>Resource Partitioning</h3>
+                <p style="font-size:0.9rem; color:#666;">Sharing the medium. Guard intervals are necessary waste.</p>
+                
+                <div class="control-group">
+                    <label id="lbl-scheme">Scheme</label>
+                    <div class="radio-group" role="radiogroup" aria-labelledby="lbl-scheme">
+                        <div class="radio-opt active" onclick="app.setAccessMode('tdma')" id="opt-tdma" role="radio" aria-checked="true" tabindex="0">TDMA</div>
+                        <div class="radio-opt" onclick="app.setAccessMode('fdma')" id="opt-fdma" role="radio" aria-checked="false" tabindex="0">FDMA</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="sl-acc-k">Users (K) <span id="val-acc-k" class="badge">4</span></label>
+                    <input type="range" id="sl-acc-k" min="2" max="8" step="1" value="4">
+                </div>
+
+                <div class="control-group">
+                    <label for="sl-acc-guard">Guard Overhead <span id="val-acc-guard" class="badge">10%</span></label>
+                    <input type="range" id="sl-acc-guard" min="0" max="50" step="5" value="10">
+                    <div style="font-size:0.8rem; color:#666; margin-top:5px;">Required for synchronization/filtering.</div>
+                </div>
+
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <div class="metric-label">Efficiency ($\eta$)</div>
+                        <div class="metric-val" id="met-acc-eff">-</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Effective Res/User</div>
+                        <div class="metric-val" id="met-acc-res">-</div>
+                    </div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-acc')">Show/Hide Theory</button>
+                <div id="th-acc" class="theory-box">
+                    <strong>Guard Overhead:</strong> Real systems need guards ($\tau_g$ or $B_g$) between users.<br>
+                    Efficiency $\eta = \frac{\text{Total} - K \times \text{Guard}}{\text{Total}}$.<br>
+                    If guard is 10%, only 90% of the spectrum/time is used for data.
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-access" aria-label="Visual grid showing time/frequency allocation and wasted guard space"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#3498db"></span> User Data</div>
+                    <div class="legend-item"><span class="dot" style="background:#e74c3c"></span> Guard (Waste)</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-cells" class="panel" aria-labelledby="btn-cells">
+            <div class="controls">
+                <h3>Cellular Reuse</h3>
+                <p style="font-size:0.9rem; color:#666;">Balancing Capacity (Low N) vs Interference Quality (High N).</p>
+
+                <div class="control-group">
+                    <label for="sl-cell-n">Cluster Size (N) <span id="val-cell-n" class="badge">7</span></label>
+                    <input type="range" id="sl-cell-n" min="0" max="3" step="1" value="3">
+                    <div style="font-size:0.8rem; color:#666; margin-top:5px;">Allowed N: 1, 3, 4, 7 (Satisfies $i^2+ij+j^2$)</div>
+                </div>
+
+                <div class="control-group">
+                    <label for="sl-cell-gamma">Path Loss Exp ($\gamma$) <span id="val-cell-gamma" class="badge">4.0</span></label>
+                    <input type="range" id="sl-cell-gamma" min="2.5" max="5" step="0.1" value="4">
+                </div>
+
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <div class="metric-label">Edge SIR</div>
+                        <div class="metric-val" id="met-sir">- dB</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Capacity Scaling</div>
+                        <div class="metric-val" id="met-cap">-</div>
+                    </div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-cell')">Show/Hide Theory</button>
+                <div id="th-cell" class="theory-box">
+                    <strong>Reuse Distance:</strong> $D = \sqrt{3N}R$.<br>
+                    <strong>Approximation:</strong> Assuming 6 dominant interferers at distance $D$:<br>
+                    $\text{SIR} \approx \frac{R^{-\gamma}}{6 D^{-\gamma}} = \frac{1}{6}(\frac{D}{R})^\gamma = \frac{1}{6}(\sqrt{3N})^\gamma$.<br>
+                    Higher $N$ improves SIR but reduces bandwidth per cell by factor $1/N$.
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-cells" aria-label="Hexagonal grid demonstrating cellular reuse patterns and interference vectors"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#f1c40f"></span> Ref Cell</div>
+                    <div class="legend-item"><span class="dot" style="background:#c0392b"></span> Interferer</div>
+                    <div class="legend-item"><span class="dot" style="border:1px dashed #333; background:none"></span> Reuse Dist (D)</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-aloha" class="panel" aria-labelledby="btn-aloha">
+            <div class="controls">
+                <h3>Random Access</h3>
+                <p style="font-size:0.9rem; color:#666;">Simulation of uncoordinated packet access.</p>
+
+                <div class="control-group">
+                    <label id="lbl-aloha">Protocol</label>
+                    <div class="radio-group" role="radiogroup" aria-labelledby="lbl-aloha">
+                        <div class="radio-opt active" onclick="app.setAlohaMode('pure')" id="opt-pure" role="radio" aria-checked="true" tabindex="0">Pure Aloha</div>
+                        <div class="radio-opt" onclick="app.setAlohaMode('slotted')" id="opt-slotted" role="radio" aria-checked="false" tabindex="0">Slotted</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="sl-aloha-g">Traffic Load (G) <span id="val-aloha-g" class="badge">0.5</span></label>
+                    <input type="range" id="sl-aloha-g" min="0.1" max="3.0" step="0.1" value="0.5">
+                    <div style="font-size:0.8rem; color:#666; margin-top:5px;">Attempts per packet time</div>
+                </div>
+
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <div class="metric-label">Theoretical S</div>
+                        <div class="metric-val" id="met-theory-s">-</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Simulated S</div>
+                        <div class="metric-val" id="met-sim-s">-</div>
+                    </div>
+                </div>
+
+                <button class="action-btn" id="btn-aloha-run" onclick="app.toggleAloha()">Start Simulation</button>
+
+                <button class="toggle-theory" onclick="app.toggle('th-aloha')">Show/Hide Theory</button>
+                <div id="th-aloha" class="theory-box">
+                    <strong>Pure Aloha:</strong> Vulnerability window $2T$. $S = G e^{-2G}$. Max $S \approx 0.18$.<br>
+                    <strong>Slotted Aloha:</strong> Vulnerability window $T$. Sync required. $S = G e^{-G}$. Max $S \approx 0.36$.<br>
+                    If $G$ is high, collisions destroy throughput (Congestion Collapse).
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-aloha" aria-label="Packet timeline animation showing collisions and successes"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#27ae60"></span> Success</div>
+                    <div class="legend-item"><span class="dot" style="background:#c0392b"></span> Collision</div>
+                    <div class="legend-item"><span class="dot" style="border:1px solid #ccc; background:none"></span> Slot Boundary</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-amc" class="panel" aria-labelledby="btn-amc">
+            <div class="controls">
+                <h3>Adaptive Modulation (AMC)</h3>
+                <p style="font-size:0.9rem; color:#666;">Adapting modulation $M$ to fading channel quality.</p>
+
+                <div class="control-group">
+                    <label for="sl-amc-snr">Avg SNR ($\bar{\gamma}$) <span id="val-amc-snr" class="badge">15 dB</span></label>
+                    <input type="range" id="sl-amc-snr" min="0" max="30" step="1" value="15">
+                </div>
+
+                <div class="control-group">
+                    <label for="sl-amc-ber">Target BER ($P_b$) <span id="val-amc-ber" class="badge">1e-3</span></label>
+                    <input type="range" id="sl-amc-ber" min="2" max="6" step="1" value="3">
+                    <div style="font-size:0.8rem; color:#666;">$10^{-x}$</div>
+                </div>
+
+                <div class="metrics-bar">
+                    <div class="metric">
+                        <div class="metric-label">Spectral Eff.</div>
+                        <div class="metric-val" id="met-amc-se">- bps/Hz</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Outage Prob.</div>
+                        <div class="metric-val" id="met-amc-out">- %</div>
+                    </div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-amc')">Show/Hide Theory</button>
+                <div id="th-amc" class="theory-box">
+                    <strong>Thresholds:</strong> Calculated using inverse Q-function approximation for exact BER targets.<br>
+                    <strong>Fading:</strong> Jakes' model (sum of sinusoids) simulates realistic Rayleigh fading correlation.<br>
+                    High SNR $\to$ High Order QAM. Deep fade $\to$ Outage.
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-amc" aria-label="Fading channel trace with modulation regions overlay"></canvas>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot" style="background:#95a5a6"></span> Outage</div>
+                    <div class="legend-item"><span class="dot" style="background:#3498db"></span> QPSK</div>
+                    <div class="legend-item"><span class="dot" style="background:#f1c40f"></span> 16QAM</div>
+                    <div class="legend-item"><span class="dot" style="background:#27ae60"></span> 64QAM</div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+<script>
+// --- UTILS ---
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+// Inverse Q-Function Approximation (for accurate AMC thresholds)
+// Source: Abramowitz & Stegun
+function invQ(p) {
+    if (p >= 1) return -Infinity;
+    if (p <= 0) return Infinity;
+    const t = Math.sqrt(-2 * Math.log(p));
+    return t - ((0.010328 * t + 0.802853) * t + 2.515517) / 
+               (((0.001308 * t + 0.189269) * t + 1.432788) * t + 1);
+}
+
+const app = {
+    tab: 'access',
+    
+    // Access State
+    accMode: 'tdma',
+    
+    // Cellular State
+    n_map: [1, 3, 4, 7],
+    
+    // Aloha State
+    alohaMode: 'pure',
+    alohaRunning: false,
+    animId: null,
+    time: 0,
+    packets: [], // {start, end, status, y}
+    simG: 0.5,
+    simSuccess: 0,
+    simTotal: 0,
+    
+    init() {
+        this.bindEvents();
+        this.updateAll();
+        
+        // Resize handling
+        window.addEventListener('resize', debounce(() => this.updateAll(), 100));
+        
+        // Keyboard Nav
+        document.querySelectorAll('.radio-opt').forEach(opt => {
+            opt.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    opt.click();
+                }
+            });
+        });
+    },
+
+    bindEvents() {
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.onclick = () => this.setTab(btn.id.replace('btn-', ''));
+        });
+
+        // Tab 1 Inputs
+        document.getElementById('sl-acc-k').oninput = debounce(() => this.updateAccess(), 10);
+        document.getElementById('sl-acc-guard').oninput = debounce(() => this.updateAccess(), 10);
+
+        // Tab 2 Inputs
+        document.getElementById('sl-cell-n').oninput = debounce(() => this.updateCells(), 10);
+        document.getElementById('sl-cell-gamma').oninput = debounce(() => this.updateCells(), 10);
+
+        // Tab 3 Inputs
+        document.getElementById('sl-aloha-g').oninput = debounce(() => this.updateAlohaParam(), 10);
+
+        // Tab 4 Inputs
+        document.getElementById('sl-amc-snr').oninput = debounce(() => this.updateAMC(), 10);
+        document.getElementById('sl-amc-ber').oninput = debounce(() => this.updateAMC(), 10);
+    },
+
+    setTab(id) {
+        if (this.tab === 'aloha' && id !== 'aloha') this.stopAloha();
+        this.tab = id;
+        
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('tab-'+id).classList.add('active');
+        
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+        });
+        document.getElementById('btn-'+id).classList.add('active');
+        document.getElementById('btn-'+id).setAttribute('aria-selected', 'true');
+
+        this.updateAll();
+    },
+
+    updateAll() {
+        if(this.tab === 'access') this.updateAccess();
+        if(this.tab === 'cells') this.updateCells();
+        if(this.tab === 'aloha') this.drawAlohaFrame();
+        if(this.tab === 'amc') this.updateAMC();
+    },
+
+    toggle(id) {
+        const el = document.getElementById(id);
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    },
+
+    getCanvas(id) {
+        const cv = document.getElementById(id);
+        const rect = cv.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        if(cv.width !== rect.width * dpr || cv.height !== rect.height * dpr) {
+            cv.width = rect.width * dpr;
+            cv.height = rect.height * dpr;
+        }
+        const ctx = cv.getContext('2d');
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        return { ctx, w: rect.width, h: rect.height };
+    },
+
+    // --- TAB 1: ACCESS ---
+    setAccessMode(mode) {
+        this.accMode = mode;
+        this.updateRadioUI('opt', mode);
+        this.updateAccess();
+    },
+
+    updateAccess() {
+        if(this.tab !== 'access') return;
+        const K = parseInt(document.getElementById('sl-acc-k').value);
+        const Guard = parseInt(document.getElementById('sl-acc-guard').value);
+        
+        document.getElementById('val-acc-k').innerText = K;
+        document.getElementById('val-acc-guard').innerText = Guard + "%";
+
+        // Metrics
+        // Efficiency = 1 - (Total Guard Overhead)
+        // In this simple model, Guard is % of allocated slot lost.
+        // Eff = 1 - Guard%
+        const eff = 100 - Guard;
+        const resPerUser = eff / K;
+        
+        document.getElementById('met-acc-eff').innerText = eff + "%";
+        document.getElementById('met-acc-res').innerText = resPerUser.toFixed(1) + "%";
+
+        const {ctx, w, h} = this.getCanvas('cv-access');
+        ctx.clearRect(0,0,w,h);
+
+        const pad = 40;
+        const plotW = w - 2*pad;
+        const plotH = h - 2*pad;
+
+        // Axes
+        ctx.strokeStyle = "#333"; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.lineTo(w-pad, h-pad);
+        ctx.stroke();
+        
+        ctx.fillStyle = "#333"; ctx.font = "14px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("Time", w/2, h-10);
+        ctx.save(); ctx.translate(15, h/2); ctx.rotate(-Math.PI/2); 
+        ctx.fillText("Frequency", 0,0); ctx.restore();
+
+        const colors = ["#3498db", "#9b59b6", "#1abc9c", "#f1c40f", "#e67e22", "#34495e"];
+
+        if (this.accMode === 'tdma') {
+            const slotW = plotW / K;
+            const guardPx = slotW * (Guard/100);
+            const userPx = slotW - guardPx;
+
+            for(let i=0; i<K; i++) {
+                let x = pad + i*slotW;
+                let y = pad;
+                // Guard (Right side of slot)
+                if (guardPx > 0) {
+                    ctx.fillStyle = "rgba(192, 57, 43, 0.2)";
+                    ctx.fillRect(x + userPx, y, guardPx, plotH);
+                    // Stripes
+                    ctx.beginPath(); ctx.strokeStyle="rgba(192, 57, 43, 0.5)";
+                    ctx.moveTo(x+userPx, y); ctx.lineTo(x+slotW, y+plotH); ctx.stroke();
+                }
+                // User
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fillRect(x, y, userPx, plotH);
+                ctx.fillStyle = "#fff"; 
+                if(userPx > 20) ctx.fillText("U"+(i+1), x + userPx/2, y + plotH/2);
+            }
+        } else {
+            const slotH = plotH / K;
+            const guardPx = slotH * (Guard/100);
+            const userPx = slotH - guardPx;
+
+            for(let i=0; i<K; i++) {
+                let x = pad;
+                let y = (h - pad) - (i+1)*slotH; // Bottom up
+                
+                // Guard (Top of slot)
+                if(guardPx > 0) {
+                    ctx.fillStyle = "rgba(192, 57, 43, 0.2)";
+                    ctx.fillRect(x, y + userPx, plotW, guardPx);
+                }
+                // User
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.fillRect(x, y, plotW, userPx);
+                ctx.fillStyle = "#fff";
+                ctx.fillText("U"+(i+1), x + plotW/2, y + userPx/2 + 5);
+            }
+        }
+    },
+
+    // --- TAB 2: CELLS ---
+    updateCells: function() {
+        if(this.tab !== 'cells') return;
+        const nIdx = parseInt(document.getElementById('sl-cell-n').value);
+        const N = this.n_map[nIdx];
+        const gamma = parseFloat(document.getElementById('sl-cell-gamma').value);
+
+        document.getElementById('val-cell-n').innerText = N;
+        document.getElementById('val-cell-gamma').innerText = gamma;
+
+        // Math: D/R = sqrt(3N)
+        const distRatio = Math.sqrt(3*N);
+        
+        // Correct SIR Calculation for 6 interferers:
+        // Signal Power S ~ R^-gamma
+        // Interference I ~ 6 * D^-gamma
+        // SIR = S/I = (R^-gamma) / (6 * D^-gamma) = (1/6) * (D/R)^gamma = (1/6) * (sqrt(3N))^gamma
+        const sirLin = (1/6) * Math.pow(distRatio, gamma);
+        const sirDb = 10 * Math.log10(sirLin);
+        
+        const sirEl = document.getElementById('met-sir');
+        sirEl.innerText = sirDb.toFixed(1) + " dB";
+        // Color code quality
+        if(sirDb < 10) sirEl.style.color = "var(--danger)";
+        else if (sirDb > 18) sirEl.style.color = "var(--success)";
+        else sirEl.style.color = "var(--warning)";
+
+        document.getElementById('met-cap').innerText = (100/N).toFixed(0) + "%";
+
+        // Visualize
+        const {ctx, w, h} = this.getCanvas('cv-cells');
+        ctx.clearRect(0,0,w,h);
+
+        const cx = w/2, cy = h/2;
+        const R = Math.min(w,h) / 12;
+
+        // Helper Hex
+        const drawHex = (x, y, r, color, label) => {
+            ctx.beginPath();
+            for(let i=0; i<6; i++) {
+                const ang = (i*60 - 30) * Math.PI/180;
+                const px = x + r * Math.cos(ang);
+                const py = y + r * Math.sin(ang);
+                if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fillStyle = color; ctx.fill();
+            ctx.strokeStyle = "#34495e"; ctx.lineWidth = 1; ctx.stroke();
+            if(label) {
+                ctx.fillStyle = "#fff"; ctx.textAlign="center"; ctx.fillText(label, x, y+4);
+            }
+        };
+
+        // Draw Center
+        drawHex(cx, cy, R, "#f1c40f", "Ref");
+
+        // Interferers Placement
+        // For N=1, they are adjacent. D = sqrt(3)R. Directions 30, 90...
+        // For N=3, D = 3R. Directions 0, 60... (Aligned with faces)
+        // For N=4, D = 3.46R. Directions ~19.1 deg...
+        // We will simplify visual angles to 60 deg steps but maintain correct Distance scale
+        
+        const D_px = distRatio * R;
+        const startAng = (N===1 || N===4 || N===7) ? 30 : 0; // Rotate to fit lattice better visually
+
+        for(let i=0; i<6; i++) {
+            const ang = (i*60 + startAng) * Math.PI/180;
+            const ix = cx + D_px * Math.cos(ang);
+            const iy = cy + D_px * Math.sin(ang);
+            
+            drawHex(ix, iy, R, "#c0392b", "I");
+            
+            // Vector
+            ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(cx, cy);
+            ctx.strokeStyle = "rgba(192, 57, 43, 0.3)"; ctx.lineWidth=2; ctx.stroke();
+        }
+
+        // Add rings for scale context
+        ctx.beginPath(); ctx.arc(cx, cy, D_px, 0, 2*Math.PI);
+        ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+        
+        ctx.fillStyle = "#333"; ctx.textAlign="center";
+        ctx.fillText(`D = ${distRatio.toFixed(2)} R`, cx + D_px/2, cy - 10);
+    },
+
+    // --- TAB 3: ALOHA ---
+    setAlohaMode(mode) {
+        this.alohaMode = mode;
+        this.updateRadioUI('opt', mode);
+        this.updateAlohaParam(); // refresh theoretical curve
+    },
+
+    updateAlohaParam() {
+        this.simG = parseFloat(document.getElementById('sl-aloha-g').value);
+        document.getElementById('val-aloha-g').innerText = this.simG;
+        
+        // Theoretical S
+        let S = 0;
+        if (this.alohaMode === 'pure') S = this.simG * Math.exp(-2 * this.simG);
+        else S = this.simG * Math.exp(-1 * this.simG);
+        
+        document.getElementById('met-theory-s').innerText = S.toFixed(3);
+    },
+
+    toggleAloha() {
+        if(this.alohaRunning) this.stopAloha();
+        else this.startAloha();
+    },
+
+    startAloha() {
+        this.alohaRunning = true;
+        document.getElementById('btn-aloha-run').innerText = "Stop Simulation";
+        document.getElementById('btn-aloha-run').classList.add('secondary');
+        
+        // Reset Stats
+        this.packets = [];
+        this.simSuccess = 0;
+        this.simTotal = 0;
+        this.time = 0;
+        
+        // Start loop
+        this.lastTime = performance.now();
+        this.animId = requestAnimationFrame((t) => this.loopAloha(t));
+    },
+
+    stopAloha() {
+        this.alohaRunning = false;
+        cancelAnimationFrame(this.animId);
+        const btn = document.getElementById('btn-aloha-run');
+        if(btn) {
+            btn.innerText = "Start Simulation";
+            btn.classList.remove('secondary');
+        }
+    },
+
+    loopAloha(timestamp) {
+        if(!this.alohaRunning) return;
+        
+        const dt = 0.05; // Simulation time step per frame (speed)
+        this.time += dt;
+
+        // 1. Generate Packets (Poisson Arrival)
+        // Prob of arrival in dt is G * dt
+        if(Math.random() < this.simG * dt) {
+            let startT = this.time;
+            
+            // If Slotted, snap start to integer
+            if(this.alohaMode === 'slotted') {
+                startT = Math.ceil(this.time); 
+                // Only queue if we haven't already queued one for this slot? 
+                // Poisson means multiple can arrive. 
+                // Simplified: Multiple packets can start at same integer time.
+            }
+
+            this.packets.push({
+                start: startT,
+                end: startT + 1.0, // Packet duration T=1
+                y: Math.random() * 0.7 + 0.1, // Visual row
+                status: 'active', // active, success, collision
+                checked: false
+            });
+        }
+
+        // 2. Collision Detection
+        // Filter packets relevant for collision (have started, haven't finished long ago)
+        const relevant = this.packets.filter(p => p.end > this.time - 2.0);
+        
+        for(let i=0; i<relevant.length; i++) {
+            let p1 = relevant[i];
+            if(p1.status === 'collision') continue; // Already dead
+
+            for(let j=i+1; j<relevant.length; j++) {
+                let p2 = relevant[j];
+                
+                // Collision Logic
+                // Pure: Overlap > 0
+                // Slotted: Start times are equal (integer)
+                
+                let collision = false;
+                if(this.alohaMode === 'pure') {
+                    // Overlap if start1 < end2 AND start2 < end1
+                    if(p1.start < p2.end && p2.start < p1.end) collision = true;
+                } else {
+                    // Slotted: same slot index
+                    if(Math.abs(p1.start - p2.start) < 0.01) collision = true;
+                }
+
+                if(collision) {
+                    p1.status = 'collision';
+                    p2.status = 'collision';
+                }
+            }
+        }
+
+        // 3. Mark Success
+        relevant.forEach(p => {
+            if(p.end < this.time && !p.checked) {
+                p.checked = true;
+                this.simTotal++;
+                if(p.status !== 'collision') {
+                    p.status = 'success';
+                    this.simSuccess++;
+                }
+            }
+        });
+
+        // 4. Update Stats (Moving Average)
+        let simS = 0;
+        if(this.simTotal > 0) {
+            // S = Successes per unit time. 
+            // Total time elapsed ~ this.time.
+            // But G is load. 
+            // Better metric: Success Count / Time Elapsed
+            if(this.time > 1) simS = this.simSuccess / Math.floor(this.time);
+        }
+        document.getElementById('met-sim-s').innerText = simS.toFixed(3);
+
+        // 5. Prune
+        if(this.packets.length > 50) this.packets.shift();
+
+        // Draw
+        this.drawAlohaFrame();
+        
+        requestAnimationFrame((t) => this.loopAloha(t));
+    },
+
+    drawAlohaFrame() {
+        const {ctx, w, h} = this.getCanvas('cv-aloha');
+        ctx.clearRect(0,0,w,h);
+
+        const splitH = h * 0.6;
+        
+        // Clip timeline area
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0,0,w,splitH); ctx.clip();
+
+        // Draw Slots (if slotted)
+        const winSize = 10.0; // View 10 seconds
+        const pxPerSec = w / winSize;
+        
+        if(this.alohaMode === 'slotted') {
+            ctx.strokeStyle = "#eee"; ctx.lineWidth = 2;
+            const startSlot = Math.floor(this.time - winSize);
+            for(let t=startSlot; t<=this.time+1; t++) {
+                let x = w - (this.time - t)*pxPerSec;
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, splitH); ctx.stroke();
+            }
+        }
+
+        // Draw Packets
+        this.packets.forEach(p => {
+            // x position based on current time
+            // Right edge of canvas is 'this.time'
+            let xRight = w - (this.time - p.end) * pxPerSec;
+            let xLeft = xRight - (1.0 * pxPerSec); // T=1
+            
+            if(xRight > 0) {
+                ctx.fillStyle = p.status === 'collision' ? "#c0392b" : (p.status==='success' ? "#27ae60" : "#3498db");
+                if(!p.checked && p.status !== 'collision') ctx.fillStyle = "#3498db"; // In flight
+
+                ctx.fillRect(xLeft, p.y * splitH, xRight-xLeft, 20);
+                ctx.strokeStyle = "white"; ctx.strokeRect(xLeft, p.y * splitH, xRight-xLeft, 20);
+            }
+        });
+        ctx.restore();
+
+        // Draw Graph (Bottom)
+        ctx.strokeStyle = "#333"; ctx.beginPath(); ctx.moveTo(0, splitH); ctx.lineTo(w, splitH); ctx.stroke();
+        
+        const graphY = splitH + 20;
+        const graphH = h - splitH - 40;
+        
+        // Theoretical Curve
+        ctx.beginPath(); ctx.strokeStyle = "#95a5a6"; ctx.lineWidth = 2;
+        const maxG = 3.0;
+        for(let g=0; g<=maxG; g+=0.05) {
+            let s = 0;
+            if(this.alohaMode === 'pure') s = g * Math.exp(-2*g);
+            else s = g * Math.exp(-g);
+            
+            let px = (g/maxG) * w;
+            let py = (graphY + graphH) - (s/0.4) * graphH; // Max S is 0.36, scale 0.4
+            if(g===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        // Current Operating Point
+        let s_curr = 0;
+        if(this.alohaMode === 'pure') s_curr = this.simG * Math.exp(-2*this.simG);
+        else s_curr = this.simG * Math.exp(-this.simG);
+        
+        let cx = (this.simG / maxG) * w;
+        let cy = (graphY + graphH) - (s_curr/0.4) * graphH;
+        
+        ctx.fillStyle = "#e67e22";
+        ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2*Math.PI); ctx.fill();
+        ctx.fillText(`Load G=${this.simG}`, cx+10, cy);
+        
+        // Axis
+        ctx.fillStyle="#7f8c8d"; ctx.fillText("G (Load)", w/2, h-5);
+        ctx.fillText("S (Throughput)", 5, graphY+10);
+    },
+    
+    drawAlohaStatic() {
+        this.updateAlohaParam();
+        this.drawAlohaFrame();
+    },
+
+    // --- TAB 4: AMC ---
+    updateAMC: function() {
+        if(this.tab !== 'amc') return;
+
+        const snrAvg = parseFloat(document.getElementById('sl-amc-snr').value);
+        const berExp = parseFloat(document.getElementById('sl-amc-ber').value);
+        const targetPb = Math.pow(10, -berExp);
+
+        document.getElementById('val-amc-snr').innerText = snrAvg + " dB";
+        document.getElementById('val-amc-ber').innerText = "1e-" + berExp;
+
+        // Accurate Thresholds (Inverse Q Function)
+        // For M-QAM, Pb approx 4/log2M * Q(sqrt(3*gamma_lin / (M-1)))
+        // We invert this for gamma_lin.
+        // Approx inversion: gamma = (M-1)/3 * (Qinv( Pb * log2M / 4 ))^2
+        
+        const calcThresh = (M) => {
+            const arg = (targetPb * Math.log2(M)) / 4.0;
+            const qInv = invQ(arg);
+            const lin = ((M-1)/3) * qInv * qInv;
+            return 10 * Math.log10(lin);
+        };
+
+        const t_qpsk = calcThresh(4);
+        const t_16 = calcThresh(16);
+        const t_64 = calcThresh(64);
+
+        const {ctx, w, h} = this.getCanvas('cv-amc');
+        ctx.clearRect(0,0,w,h);
+
+        const points = 200;
+        let totalRate = 0;
+        let outageCount = 0;
+
+        // Jakes Model Fading (Sum of Sinusoids)
+        // Generates correlated Rayleigh fading
+        
+        ctx.beginPath();
+        for(let i=0; i<points; i++) {
+            const t = i * 0.2; // Time scaling
+            // Sum of 8 sinusoids with random phases (fixed here for deterministic visual)
+            let re = 0, im = 0;
+            const N = 8;
+            for(let n=1; n<=N; n++) {
+                const alpha = (2*Math.PI*n - Math.PI)/ (4*N);
+                const phase = n*n; // Pseudo random
+                re += Math.cos(2*Math.PI*Math.cos(alpha)*t + phase);
+                im += Math.sin(2*Math.PI*Math.cos(alpha)*t + phase);
+            }
+            const mag = Math.sqrt(re*re + im*im) / Math.sqrt(N); // Normalize roughly
+            const fadeDb = 20 * Math.log10(mag); // Power fade
+            
+            const instSnr = snrAvg + fadeDb;
+            
+            // Map
+            const x = (i/points) * w;
+            const y = h - ((instSnr + 10) / 50) * h; // Range -10 to 40
+
+            // Mode
+            let color = "#95a5a6";
+            let rate = 0;
+            if(instSnr >= t_64) { color = "#27ae60"; rate=6; }
+            else if(instSnr >= t_16) { color = "#f39c12"; rate=4; }
+            else if(instSnr >= t_qpsk) { color = "#3498db"; rate=2; }
+            else outageCount++;
+
+            totalRate += rate;
+
+            // Draw Bar
+            ctx.fillStyle = color;
+            ctx.fillRect(x, 0, (w/points)+1, h);
+            
+            // Trace line
+            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        
+        // Draw Trace
+        ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2; ctx.stroke();
+
+        // Draw Thresholds
+        const drawThresh = (val, label) => {
+            const y = h - ((val + 10) / 50) * h;
+            if(y > 0 && y < h) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y);
+                ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+                ctx.fillStyle = "#000"; ctx.fillText(label, 5, y-5);
+            }
+        };
+        drawThresh(t_qpsk, "QPSK");
+        drawThresh(t_16, "16QAM");
+        drawThresh(t_64, "64QAM");
+
+        // Metrics
+        const avgSE = totalRate / points;
+        const outProb = (outageCount / points) * 100;
+        document.getElementById('met-amc-se').innerText = avgSE.toFixed(2) + " bps/Hz";
+        document.getElementById('met-amc-out').innerText = outProb.toFixed(1) + " %";
+    },
+
+    updateRadioUI(prefix, mode) {
+        document.querySelectorAll(`.radio-opt[id^="${prefix}-"]`).forEach(el => {
+            const isActive = el.id.includes(mode);
+            el.className = isActive ? 'radio-opt active' : 'radio-opt';
+            el.setAttribute('aria-checked', isActive);
+        });
+    }
+};
+
+window.onload = () => app.init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture: Topics in 6G - Interactive Lab</title>
+    
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #8e44ad; /* 6G Purple */
+            --highlight: #3498db;
+            --bg: #f8f9fa;
+            --text: #333;
+            --border: #ddd;
+            --success: #27ae60;
+            --danger: #c0392b;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* HEADER */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { margin: 0; font-size: 1.3rem; }
+        .subtitle { font-size: 0.9rem; opacity: 0.9; }
+
+        /* NAV */
+        nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 0 1rem;
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 1rem 0.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #7f8c8d;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { color: var(--primary); background: #f1f1f1; }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+        /* MAIN */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+        .container { max-width: 1200px; width: 100%; display: grid; gap: 1.5rem; }
+
+        .panel { display: none; }
+        .panel.active { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; animation: fadein 0.3s; }
+        @media (max-width: 850px) { .panel.active { grid-template-columns: 1fr; } }
+        @keyframes fadein { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CONTROLS */
+        .controls {
+            background: white; padding: 1.5rem; border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); height: fit-content;
+        }
+        .control-group { margin-bottom: 1.2rem; }
+        label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        input[type="range"] { width: 100%; cursor: pointer; height: 24px; }
+        .badge { background: var(--bg); padding: 2px 8px; border-radius: 4px; font-family: monospace; border: 1px solid var(--border); font-size: 0.9em; }
+
+        /* BUTTONS */
+        .btn-group { display: flex; gap: 5px; margin-bottom: 15px; width: 100%; }
+        .toggle-btn {
+            flex: 1; padding: 8px; background: #eee; border: 1px solid #ccc; cursor: pointer;
+            font-size: 0.9rem; transition: 0.2s; text-align: center;
+        }
+        .toggle-btn:first-child { border-radius: 4px 0 0 4px; }
+        .toggle-btn:last-child { border-radius: 0 4px 4px 0; }
+        .toggle-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .toggle-btn:focus { outline: 2px solid var(--primary); z-index: 1; }
+
+        /* VIZ */
+        .viz-card {
+            background: white; padding: 1rem; border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-direction: column;
+        }
+        canvas {
+            width: 100%; height: 400px; background: #fff;
+            border: 1px solid #eee; border-radius: 4px;
+        }
+
+        /* METRICS */
+        .metric-box {
+            background: #f8f9fa; border: 1px solid #eee; padding: 10px; border-radius: 4px;
+            text-align: center; margin-bottom: 10px;
+        }
+        .metric-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
+        .metric-lbl { font-size: 0.8rem; color: #666; text-transform: uppercase; }
+
+        /* THEORY */
+        .theory-box {
+            margin-top: 1rem; padding: 1rem; background: #f3e5f5; border-left: 4px solid var(--accent);
+            font-size: 0.9rem; line-height: 1.5; display: none;
+        }
+        .toggle-theory {
+            background: none; border: none; color: var(--accent); text-decoration: underline;
+            cursor: pointer; font-size: 0.85rem; padding: 0; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Lecture 12: Topics in 6G</h1>
+        <div class="subtitle">Cell-Free MIMO, RIS, and Integrated Sensing</div>
+    </div>
+    <div style="text-align: right; font-size: 0.8rem;">SSY135 Interactive v3.1</div>
+</header>
+
+<nav>
+    <button class="tab-btn active" onclick="app.setTab('vision')" id="btn-vision">1. 6G Vision</button>
+    <button class="tab-btn" onclick="app.setTab('cellfree')" id="btn-cellfree">2. Cell-Free MIMO</button>
+    <button class="tab-btn" onclick="app.setTab('ris')" id="btn-ris">3. Intelligent Surfaces (RIS)</button>
+    <button class="tab-btn" onclick="app.setTab('isac')" id="btn-isac">4. Integrated Sensing (ISAC)</button>
+</nav>
+
+<main>
+    <div class="container">
+
+        <section id="tab-vision" class="panel active">
+            <div class="controls">
+                <h3>6G Key Drivers</h3>
+                <p style="font-size:0.9rem; color:#666;">Compare requirements vs 5G baseline.</p>
+                
+                <div class="control-group">
+                    <label for="sel-usecase">Select Use Case:</label>
+                    <select id="sel-usecase" onchange="app.updateVision()" style="width:100%; padding:8px; border-radius:4px; border:1px solid #ddd;">
+                        <option value="baseline">Baseline Comparison</option>
+                        <option value="holo">Holographic Telepresence</option>
+                        <option value="twin">Digital Twin (Industry 4.0)</option>
+                        <option value="auto">Fully Autonomous Driving</option>
+                    </select>
+                </div>
+
+                <div class="metric-box">
+                    <div style="font-size:0.8rem; color:#666;">Chart Scale: Logarithmic</div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-vision')">Show/Hide Theory</button>
+                <div id="th-vision" class="theory-box">
+                    <strong>The 6G Hexagon:</strong>
+                    <ul>
+                        <li><strong>Rate:</strong> 1 Tbps peak (100x 5G).</li>
+                        <li><strong>Latency:</strong> 0.1 ms (10x 5G).</li>
+                        <li><strong>Density:</strong> 10M devs/km² (10x 5G).</li>
+                        <li><strong>Jitter:</strong> Deterministic timing (New).</li>
+                        <li><strong>Sensing:</strong> cm-level accuracy (New).</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-vision"></canvas>
+            </div>
+        </section>
+
+        <section id="tab-cellfree" class="panel">
+            <div class="controls">
+                <h3>Cell-Free Massive MIMO</h3>
+                <p style="font-size:0.9rem; color:#666;">User-centric architecture.</p>
+
+                <div class="control-group">
+                    <label>Architecture</label>
+                    <div class="btn-group" role="group" aria-label="Network Architecture">
+                        <button class="toggle-btn active" id="mode-cf" onclick="app.setCFMode('cf')">Cell-Free</button>
+                        <button class="toggle-btn" id="mode-cell" onclick="app.setCFMode('cell')">Cellular</button>
+                    </div>
+                </div>
+
+                <div class="metric-box">
+                    <div class="metric-val" id="val-cf-snr">- dB</div>
+                    <div class="metric-lbl">Uplink SNR</div>
+                </div>
+                
+                <p style="font-size:0.85rem; color:#555;">
+                    <strong>Instruction:</strong> Drag the user (Green Dot). Cellular drops at edges. Cell-Free is stable.
+                </p>
+
+                <button class="toggle-theory" onclick="app.toggle('th-cf')">Show/Hide Theory</button>
+                <div id="th-cf" class="theory-box">
+                    <strong>Cellular:</strong> Connects to single best BS. <br>
+                    $SNR \propto P \cdot \max_l (\beta_l)$. High variance.<br>
+                    <strong>Cell-Free:</strong> Coherent processing of all APs.<br>
+                    $SNR \propto P \cdot (\sum_l \sqrt{\beta_l})^2$.<br>
+                    Macro-diversity eliminates cell edges.
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-cellfree"></canvas>
+            </div>
+        </section>
+
+        <section id="tab-ris" class="panel">
+            <div class="controls">
+                <h3>Reconfigurable Intelligent Surface</h3>
+                <p style="font-size:0.9rem; color:#666;">Passive beamforming $N^2$ gain.</p>
+
+                <div class="control-group">
+                    <label for="sl-ris-n">RIS Elements (N): <span id="lbl-ris-n" class="badge">100</span></label>
+                    <input type="range" id="sl-ris-n" min="10" max="400" step="10" value="100" oninput="app.updateRIS()">
+                </div>
+
+                <div class="control-group">
+                    <label>Phase Control</label>
+                    <div class="btn-group">
+                        <button class="toggle-btn active" id="mode-ris-opt" onclick="app.setRISMode('opt')">Optimized</button>
+                        <button class="toggle-btn" id="mode-ris-rnd" onclick="app.setRISMode('rnd')">Random</button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="sl-ris-pos">RIS Position (Tx to Rx)</label>
+                    <input type="range" id="sl-ris-pos" min="10" max="90" value="50" oninput="app.updateRIS()">
+                </div>
+
+                <div class="metric-box">
+                    <div class="metric-val" id="val-ris-gain">- dB</div>
+                    <div class="metric-lbl">Relative Rx Power</div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-ris')">Show/Hide Theory</button>
+                <div id="th-ris" class="theory-box">
+                    <strong>Product Path Loss:</strong> Signal travels Tx $\to$ RIS $\to$ Rx.<br>
+                    $P_{rx} \propto (d_{tx} d_{rx})^{-2}$. Gain is highest when RIS is close to Tx or Rx.<br>
+                    <strong>Scaling Law:</strong>
+                    <ul>
+                        <li><strong>Optimized:</strong> Coherent addition. $P_{rx} \propto N^2$.</li>
+                        <li><strong>Random:</strong> Incoherent. $P_{rx} \propto N$.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-ris"></canvas>
+            </div>
+        </section>
+
+        <section id="tab-isac" class="panel">
+            <div class="controls">
+                <h3>Integrated Sensing & Comm</h3>
+                <p style="font-size:0.9rem; color:#666;">Frequency-domain resource allocation trade-off.</p>
+
+                <div class="control-group">
+                    <label for="sl-isac-w">Priority Weight ($w$)</label>
+                    <input type="range" id="sl-isac-w" min="0" max="1" step="0.05" value="0.5" oninput="app.updateISAC()">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:5px;">
+                        <span>Pure Sensing</span>
+                        <span>Balanced</span>
+                        <span>Pure Comm</span>
+                    </div>
+                </div>
+
+                <div class="metric-box">
+                    <div class="metric-val" id="val-isac-rate">- bps/Hz</div>
+                    <div class="metric-lbl">Comm Rate</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-val" id="val-isac-acc">-</div>
+                    <div class="metric-lbl">Accuracy Metric (1/CRB)</div>
+                </div>
+
+                <button class="toggle-theory" onclick="app.toggle('th-isac')">Show/Hide Theory</button>
+                <div id="th-isac" class="theory-box">
+                    <strong>Waterfilling Conflict:</strong>
+                    <ul>
+                        <li><strong>Comm ($w=1$):</strong> Allocates power to channel peaks (Waterfilling) to maximize Rate $R$.</li>
+                        <li><strong>Sensing ($w=0$):</strong> Allocates power to band edges to maximize effective bandwidth $\beta_{eff}$, minimizing $CRB \propto 1/\beta_{eff}^2$.</li>
+                    </ul>
+                    The optimal trade-off is found on the convex Pareto frontier.
+                </div>
+            </div>
+            <div class="viz-card">
+                <canvas id="cv-isac"></canvas>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+<script>
+// --- UTILS ---
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+
+const app = {
+    tab: 'vision',
+    
+    // State
+    cfMode: 'cf',
+    cfUser: {x: 500, y: 500},
+    risMode: 'opt',
+    
+    init() {
+        this.bindEvents();
+        this.updateAll();
+        window.addEventListener('resize', debounce(() => this.updateAll(), 100));
+    },
+
+    bindEvents() {
+        // Tab Nav
+        ['vision', 'cellfree', 'ris', 'isac'].forEach(id => {
+            document.getElementById('btn-'+id).onclick = () => this.setTab(id);
+        });
+
+        // Tab 2 Mouse interaction
+        const cvCF = document.getElementById('cv-cellfree');
+        const handleMove = (x, y) => {
+            const rect = cvCF.getBoundingClientRect();
+            const scaleX = cvCF.width / rect.width; 
+            const scaleY = cvCF.height / rect.height;
+            this.cfUser.x = (x - rect.left) * scaleX * (1000/cvCF.width); 
+            this.cfUser.y = (y - rect.top) * scaleY * (1000/cvCF.height);
+            this.updateCellFree();
+        };
+
+        cvCF.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+        cvCF.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+    },
+
+    setTab(id) {
+        this.tab = id;
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('tab-'+id).classList.add('active');
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-'+id).classList.add('active');
+        
+        // Re-render math
+        if(window.MathJax) MathJax.typesetPromise();
+        this.updateAll();
+    },
+
+    updateAll() {
+        if(this.tab === 'vision') this.updateVision();
+        if(this.tab === 'cellfree') this.updateCellFree();
+        if(this.tab === 'ris') this.updateRIS();
+        if(this.tab === 'isac') this.updateISAC();
+    },
+
+    getCanvas(id) {
+        const cv = document.getElementById(id);
+        const rect = cv.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        if(cv.width !== rect.width * dpr || cv.height !== rect.height * dpr) {
+            cv.width = rect.width * dpr;
+            cv.height = rect.height * dpr;
+        }
+        const ctx = cv.getContext('2d');
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        return {ctx, w: rect.width, h: rect.height};
+    },
+
+    toggle(id) {
+        const el = document.getElementById(id);
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+        if(window.MathJax) MathJax.typesetPromise();
+    },
+
+    // --- TAB 1: VISION ---
+    updateVision() {
+        if(this.tab !== 'vision') return;
+        const {ctx, w, h} = this.getCanvas('cv-vision');
+        const cx = w/2, cy = h/2, R = Math.min(w,h)/2.5;
+        
+        ctx.clearRect(0,0,w,h);
+        
+        const labels = ["Peak Rate", "User Rate", "Latency", "Density", "Reliability", "Positioning"];
+        const useCase = document.getElementById('sel-usecase').value;
+        
+        // Data in multipliers relative to 5G
+        let data6G = [50, 10, 10, 10, 100, 10]; // Generic
+        if (useCase === 'holo') data6G = [100, 20, 10, 1, 100, 1]; 
+        if (useCase === 'twin') data6G = [10, 5, 20, 50, 1000, 10]; 
+        if (useCase === 'auto') data6G = [5, 2, 50, 5, 10000, 100]; 
+
+        // Grid
+        ctx.strokeStyle = "#ddd"; ctx.lineWidth=1;
+        ctx.font = "12px sans-serif"; ctx.textAlign = "center";
+        
+        for(let r=0.2; r<=1; r+=0.2) {
+            ctx.beginPath();
+            for(let i=0; i<6; i++) {
+                const ang = i * Math.PI/3 - Math.PI/2;
+                ctx[i===0?'moveTo':'lineTo'](cx + R*r*Math.cos(ang), cy + R*r*Math.sin(ang));
+            }
+            ctx.closePath(); ctx.stroke();
+        }
+
+        // Axes & Labels
+        for(let i=0; i<6; i++) {
+            const ang = i * Math.PI/3 - Math.PI/2;
+            ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+R*Math.cos(ang), cy+R*Math.sin(ang)); ctx.stroke();
+            const tx = cx + (R+25)*Math.cos(ang);
+            const ty = cy + (R+25)*Math.sin(ang);
+            ctx.fillStyle="#333"; ctx.fillText(labels[i], tx, ty+4);
+        }
+
+        const drawPoly = (data, color, fill) => {
+            ctx.beginPath();
+            for(let i=0; i<6; i++) {
+                let val = Math.log10(data[i]);
+                let max = 2; // log10(100)
+                if(i===4) max=4; // Reliability goes to 10000
+                let r = R * (0.2 + 0.8 * (Math.max(0, val)/max)); 
+                if(data[i]===1) r = R*0.2; // Baseline
+                if(r>R) r=R;
+                
+                const ang = i * Math.PI/3 - Math.PI/2;
+                ctx[i===0?'moveTo':'lineTo'](cx + r*Math.cos(ang), cy + r*Math.sin(ang));
+            }
+            ctx.closePath();
+            ctx.strokeStyle = color; ctx.lineWidth=2; ctx.stroke();
+            if(fill) { ctx.fillStyle = fill; ctx.fill(); }
+        };
+
+        drawPoly([1,1,1,1,1,1], "#7f8c8d", "rgba(127,140,141,0.2)");
+        drawPoly(data6G, "#8e44ad", "rgba(142,68,173,0.3)");
+        
+        ctx.fillStyle="#7f8c8d"; ctx.fillText("5G Baseline", w*0.1, h-20);
+        ctx.fillStyle="#8e44ad"; ctx.fillText("6G Target", w*0.9, h-20);
+    },
+
+    // --- TAB 2: CELL FREE ---
+    setCFMode(mode) {
+        this.cfMode = mode;
+        document.getElementById('mode-cf').className = mode==='cf'?'toggle-btn active':'toggle-btn';
+        document.getElementById('mode-cell').className = mode==='cell'?'toggle-btn active':'toggle-btn';
+        this.updateCellFree();
+    },
+
+updateCellFree() {
+        if(this.tab !== 'cellfree') return;
+        const {ctx, w, h} = this.getCanvas('cv-cellfree');
+        ctx.clearRect(0,0,w,h);
+
+        const scaleX = w/1000, scaleY = h/1000;
+        const APs = [];
+        for(let i=0; i<4; i++) for(let j=0; j<4; j++) APs.push({x: 125 + i*250, y: 125 + j*250});
+
+        // Path Loss Model: beta = C * d^-3.5
+        // FIX 1: Added * 1e9 scaling so values aren't microscopic (fixes visualization opacity)
+        let pathLosses = APs.map(ap => {
+            const dx = ap.x - this.cfUser.x;
+            const dy = ap.y - this.cfUser.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            return Math.pow(Math.max(d, 10), -3.5) * 1e9; 
+        });
+
+        const ux = this.cfUser.x * scaleX, uy = this.cfUser.y * scaleY;
+        let signalPower = 0;
+        
+        // FIX 2: Adjusted noise floor to match the 1e9 scaling (keeps SNR in 0-40dB range)
+        let noise = 10; 
+
+        if(this.cfMode === 'cell') {
+            // Cellular: SNR propto Max(Beta)
+            let maxBeta = 0;
+            let maxIdx = -1;
+            pathLosses.forEach((beta, i) => { if(beta > maxBeta) { maxBeta = beta; maxIdx = i; } });
+            
+            signalPower = maxBeta;
+            
+            // Draw connection
+            const ap = APs[maxIdx];
+            ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
+            ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(ap.x*scaleX, ap.y*scaleY); ctx.stroke();
+            ctx.setLineDash([]);
+        } else {
+            // Cell-Free: Coherent Combining
+            // Signal = (Sum sqrt(gain))^2 / N
+            let voltSum = 0;
+            
+            // FIX 3: Fixed variable name 'gains' -> 'pathLosses'
+            pathLosses.forEach((g, i) => {
+                voltSum += Math.sqrt(g);
+                const alpha = Math.min(1, Math.sqrt(g)/3);
+                if(alpha > 0.05) {
+                    ctx.strokeStyle = `rgba(142, 68, 173, ${alpha})`; 
+                    ctx.lineWidth = alpha*3;
+                    ctx.beginPath(); ctx.moveTo(ux, uy); ctx.lineTo(APs[i].x*scaleX, APs[i].y*scaleY); ctx.stroke();
+                }
+            });
+            // Normalized to similar scale for comparison
+            signalPower = (voltSum * voltSum) / 16; 
+        }
+
+        // Draw APs
+        ctx.fillStyle = "#333";
+        APs.forEach(ap => {
+            const px = ap.x * scaleX, py = ap.y * scaleY;
+            ctx.beginPath(); ctx.moveTo(px-6, py+10); ctx.lineTo(px+6, py+10); ctx.lineTo(px, py-2); ctx.fill();
+        });
+
+        // Draw User
+        ctx.fillStyle = "#27ae60"; ctx.beginPath(); ctx.arc(ux, uy, 8, 0, 2*Math.PI); ctx.fill();
+
+        // SNR Display (Scaled dB)
+        const snr = 10 * Math.log10(Math.max(signalPower, 1e-9) / noise);
+        document.getElementById('val-cf-snr').innerText = snr.toFixed(1) + " dB";
+    },
+
+    // --- TAB 3: RIS ---
+    setRISMode(mode) {
+        this.risMode = mode;
+        document.getElementById('mode-ris-opt').className = mode==='opt'?'toggle-btn active':'toggle-btn';
+        document.getElementById('mode-ris-rnd').className = mode==='rnd'?'toggle-btn active':'toggle-btn';
+        this.updateRIS();
+    },
+
+    updateRIS() {
+        if(this.tab !== 'ris') return;
+        
+        const N = parseInt(document.getElementById('sl-ris-n').value);
+        const risPos = parseInt(document.getElementById('sl-ris-pos').value);
+        document.getElementById('lbl-ris-n').innerText = N;
+
+        const {ctx, w, h} = this.getCanvas('cv-ris');
+        ctx.clearRect(0,0,w,h);
+
+        // Geometry: Tx (0), Rx (100). RIS at risPos (x-axis)
+        // Heights: Tx/Rx at 0, RIS at 20 (meters scale)
+        // Distances in simulation units
+        const d1 = Math.sqrt(Math.pow(risPos, 2) + 20*20); // Tx to RIS
+        const d2 = Math.sqrt(Math.pow(100 - risPos, 2) + 20*20); // RIS to Rx
+        const productLoss = (1 / (d1 * d1)) * (1 / (d2 * d2)); // Product path loss (d^-2 * d^-2)
+
+        // Gain Calc [Cite 3022]
+        // Opt: N^2 * ProductLoss
+        // Rnd: N * ProductLoss
+        let powerLin = productLoss * ((this.risMode === 'opt') ? N*N : N);
+        
+        // Normalize for display (relative to some baseline)
+        const ref = (1/(50*50))*(1/(50*50))*100; // Baseline N=10 in middle
+        const gainDb = 10 * Math.log10(powerLin / ref);
+        document.getElementById('val-ris-gain').innerText = (gainDb > 0 ? "+" : "") + gainDb.toFixed(1) + " dB";
+
+        // Draw Scene
+        const txX = w*0.1, rxX = w*0.9, groundY = h*0.7;
+        const risX = txX + (rxX-txX)*(risPos/100);
+        const risY = groundY - 100; // RIS height
+
+        // Entities
+        ctx.fillStyle="#333";
+        ctx.fillRect(txX-10, groundY-20, 20, 20); ctx.fillText("TX", txX-8, groundY+15);
+        ctx.fillRect(rxX-10, groundY-20, 20, 20); ctx.fillText("RX", rxX-8, groundY+15);
+        
+        // Blocker
+        ctx.fillStyle="#95a5a6"; ctx.beginPath(); ctx.arc((txX+rxX)/2, groundY-20, 40, 0, Math.PI, true); ctx.fill();
+        ctx.fillStyle = "white"; ctx.fillText("Blocker", (txX+rxX)/2 - 20, groundY-10);
+
+        // RIS
+        ctx.fillStyle="#8e44ad"; ctx.fillRect(risX-15, risY-15, 30, 10); ctx.fillStyle="#333"; ctx.fillText("RIS", risX-10, risY-20);
+        
+        // Rays
+        ctx.strokeStyle = "#c0392b"; ctx.setLineDash([5,5]); ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(txX, groundY-20); ctx.lineTo(rxX, groundY-20); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = "#27ae60"; ctx.lineWidth=2; 
+        ctx.beginPath(); ctx.moveTo(txX, groundY-20); ctx.lineTo(risX, risY); ctx.lineTo(rxX, groundY-20); ctx.stroke();
+
+        // Phasor Diagram (Inset)
+        const pcx = w-80, pcy = 80;
+        ctx.fillStyle="#fff"; ctx.fillRect(pcx-60, pcy-60, 120, 120); ctx.strokeRect(pcx-60, pcy-60, 120, 120);
+        
+        let cx = pcx, cy = pcy;
+        const step = 40 / Math.sqrt(N);
+        ctx.beginPath(); ctx.moveTo(pcx, pcy);
+        
+        // seeded random
+        let seed = 1; const rnd = () => Math.sin(seed++)*10000 - Math.floor(Math.sin(seed++)*10000);
+
+        for(let i=0; i<Math.min(N, 200); i++) {
+            let angle = (this.risMode === 'opt') ? -Math.PI/4 : rnd() * 2 * Math.PI;
+            cx += step * Math.cos(angle);
+            cy += step * Math.sin(angle);
+            ctx.lineTo(cx, cy);
+        }
+        ctx.strokeStyle = "#8e44ad"; ctx.lineWidth=1; ctx.stroke();
+        
+        // Resultant
+        ctx.strokeStyle = "#e74c3c"; ctx.lineWidth=2; 
+        ctx.beginPath(); ctx.moveTo(pcx, pcy); ctx.lineTo(cx, cy); ctx.stroke();
+        ctx.fillStyle="#333"; ctx.fillText(this.risMode==='opt'?"Coherent":"Random", pcx-25, pcy+50);
+    },
+
+    // --- TAB 4: ISAC ---
+    updateISAC() {
+        if(this.tab !== 'isac') return;
+        const wVal = parseFloat(document.getElementById('sl-isac-w').value);
+        const {ctx, w, h} = this.getCanvas('cv-isac');
+        ctx.clearRect(0,0,w,h);
+
+        const K = 20; // Subcarriers
+        const subW = (w-40)/K;
+        const specY = h*0.45;
+        const P_tot = 10.0;
+        
+        // 1. Channel (Comm wants Center)
+        const H = new Float32Array(K);
+        for(let k=0; k<K; k++) {
+            // Gaussian shape centered at K/2
+            const x = (k - K/2) / (K/4);
+            H[k] = 0.1 + 0.9 * Math.exp(-x*x); 
+        }
+
+        // 2. Sensing Requirement (Edge-Heavy)
+        const P_sense_ideal = new Float32Array(K);
+        let sumS = 0;
+        for(let k=0; k<K; k++) {
+            const dist = Math.abs(k - (K-1)/2);
+            const val = Math.pow(dist, 4); 
+            P_sense_ideal[k] = val;
+            sumS += val;
+        }
+        for(let k=0; k<K; k++) P_sense_ideal[k] = (P_sense_ideal[k]/sumS) * P_tot;
+
+        // 3. Comm Requirement (Waterfilling on H)
+        let P_comm_ideal = new Float32Array(K);
+        let sumC = 0;
+        for(let k=0; k<K; k++) {
+             let val = Math.max(0, H[k] - 0.2); 
+             P_comm_ideal[k] = val;
+             sumC += val;
+        }
+        for(let k=0; k<K; k++) P_comm_ideal[k] = (P_comm_ideal[k]/sumC) * P_tot;
+
+        // 4. Actual Allocation (Weighted Mix)
+        let P = new Float32Array(K);
+        let sumP = 0;
+        for(let k=0; k<K; k++) {
+            P[k] = wVal * P_comm_ideal[k] + (1-wVal) * P_sense_ideal[k];
+            sumP += P[k];
+        }
+        for(let k=0; k<K; k++) P[k] = P[k] * (P_tot/sumP);
+
+
+        // --- METRICS CALCULATION ---
+        
+        let Rate = 0;
+        for(let k=0; k<K; k++) Rate += Math.log2(1 + P[k] * Math.pow(H[k], 2) * 10);
+        
+        let sumPf=0, sumPf2=0;
+        for(let k=0; k<K; k++) { sumPf += P[k]*k; sumPf2 += P[k]*k*k; }
+        let f_bar = sumPf/P_tot;
+        let beta2 = (sumPf2/P_tot) - (f_bar*f_bar);
+        let Acc = Math.sqrt(beta2 * P_tot);
+
+        document.getElementById('val-isac-rate').innerText = Rate.toFixed(2);
+        document.getElementById('val-isac-acc').innerText = Acc.toFixed(2);
+
+
+        // --- DRAWING ---
+        
+        // 1. Spectrum Plot (Top)
+        const specH = h * 0.45;
+        const pad = 40;
+        const specW = w - 2*pad;
+        
+        ctx.strokeStyle = "#ccc"; ctx.lineWidth=1; ctx.setLineDash([5,5]);
+        ctx.beginPath();
+        for(let k=0; k<K; k++) {
+            const hx = pad + k*subW + subW/2;
+            const hy = specH - H[k]*(specH-20);
+            if(k===0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle="#999"; ctx.fillText("Channel Quality", pad, 20);
+
+        for(let k=0; k<K; k++) {
+            const bh = P[k] * (specH/P_tot) * 8; 
+            const bx = pad + k*subW;
+            const r = Math.floor(255*(1-wVal));
+            const b = Math.floor(255*wVal);
+            ctx.fillStyle = `rgb(${r}, 0, ${b})`;
+            ctx.fillRect(bx, specH - bh, subW-2, bh);
+        }
+        ctx.fillStyle="#333"; ctx.textAlign="center";
+        ctx.fillText("Frequency Subcarriers", w/2, specH + 15);
+
+
+        // 2. Trade-off Curve (Bottom)
+        const chartY = specH + 50;
+        const chartH = h - chartY - 30;
+        
+        ctx.strokeStyle = "#333"; ctx.lineWidth=2;
+        ctx.beginPath(); 
+        ctx.moveTo(pad, chartY); ctx.lineTo(pad, chartY+chartH); ctx.lineTo(pad+specW, chartY+chartH); 
+        ctx.stroke();
+        
+        ctx.fillText("Comm Rate", pad+specW-40, chartY+chartH+15);
+        ctx.save(); ctx.translate(15, chartY+chartH/2); ctx.rotate(-Math.PI/2); ctx.fillText("Accuracy", 0,0); ctx.restore();
+
+        // PRE-CALCULATE Curve limits to ensure scaling is robust
+        // This prevents the line from going off-canvas or the dot from detaching
+        const curvePts = [];
+        for(let ww=0; ww<=1.01; ww+=0.05) {
+            let p_mix = new Float32Array(K);
+            let s_mix = 0;
+            for(let k=0; k<K; k++) {
+                p_mix[k] = ww * P_comm_ideal[k] + (1-ww) * P_sense_ideal[k];
+                s_mix += p_mix[k];
+            }
+            // Normalize
+            for(let k=0; k<K; k++) p_mix[k] = p_mix[k] * (P_tot/s_mix);
+            
+            let r = 0; 
+            for(let k=0; k<K; k++) r += Math.log2(1 + p_mix[k] * H[k]**2 * 10);
+            
+            let sPf=0, sPf2=0;
+            for(let k=0; k<K; k++) { sPf += p_mix[k]*k; sPf2 += p_mix[k]*k*k; }
+            let fb = sPf/P_tot;
+            let b2 = (sPf2/P_tot) - fb*fb;
+            let acc = Math.sqrt(b2*P_tot);
+            
+            curvePts.push({x: r, y: acc});
+        }
+        
+        // Find max limits for scaling
+        let maxR = 0.1, maxAcc = 0.1;
+        curvePts.forEach(pt => {
+            if(pt.x > maxR) maxR = pt.x;
+            if(pt.y > maxAcc) maxAcc = pt.y;
+        });
+
+        // Plot Curve
+        ctx.beginPath();
+        ctx.strokeStyle = "#8e44ad";
+        curvePts.forEach((pt, i) => {
+            const px = pad + (pt.x / (maxR*1.1)) * specW;
+            const py = (chartY+chartH) - (pt.y / (maxAcc*1.1)) * chartH;
+            if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+
+        // Plot Current Dot (Using exact same scaling logic)
+        const dotX = pad + (Rate / (maxR*1.1)) * specW;
+        const dotY = (chartY+chartH) - (Acc / (maxAcc*1.1)) * chartH;
+        
+        ctx.fillStyle = "#e67e22"; ctx.beginPath(); ctx.arc(dotX, dotY, 6, 0, 2*Math.PI); ctx.fill();
+        ctx.fillText("Current", dotX+10, dotY);
+    }
+};
+
+window.onload = () => app.init();
+</script>
+
+</body>
+</html>
