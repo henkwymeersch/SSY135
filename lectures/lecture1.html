@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wireless Comm Fundamentals - Interactive Lecture 1</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --light: #ecf0f1;
+            --text: #333;
+            --border: #bdc3c7;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+            line-height: 1.6;
+        }
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.5rem; }
+        .subtitle { font-size: 0.9rem; opacity: 0.8; }
+        
+        /* Tabs */
+        .tab-nav {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto; /* Scroll on mobile if needed */
+        }
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { background-color: var(--light); }
+        .tab-btn.active {
+            border-bottom-color: var(--accent);
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* Content */
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+
+        /* Layout Grid */
+        .interactive-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        /* Controls */
+        .controls {
+            padding-right: 1rem;
+            border-right: 1px solid var(--light);
+        }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem;}
+        .control-group input[type="range"] { width: 100%; }
+        .control-group select { width: 100%; padding: 0.5rem; }
+        .value-display { font-size: 0.85rem; color: #7f8c8d; float: right; }
+        
+        button.action-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        button.action-btn:hover { background-color: #2980b9; }
+        button.reset-btn {
+            background-color: transparent;
+            color: #7f8c8d;
+            border: 1px solid var(--border);
+            margin-top: 0.5rem;
+        }
+
+        /* Visualization */
+        .viz-area {
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        canvas {
+            width: 100%;
+            height: 400px;
+            background-color: #fff;
+            border: 1px solid #eee;
+        }
+        
+        /* Theory Toggle */
+        .theory-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--accent);
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .theory-toggle {
+            font-size: 0.8rem;
+            text-decoration: underline;
+            cursor: pointer;
+            color: var(--accent);
+            display: inline-block;
+            margin-top: 0.5rem;
+        }
+
+        /* Helpers */
+        .note { font-size: 0.85rem; color: #7f8c8d; margin-top: 0.5rem; }
+        .legend { display: flex; gap: 1rem; font-size: 0.8rem; justify-content: center; margin-top: 0.5rem; flex-wrap: wrap;}
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .interactive-grid { grid-template-columns: 1fr; }
+            .controls { border-right: none; border-bottom: 1px solid var(--light); padding-bottom: 1rem; }
+            .tab-btn { padding: 0.8rem 1rem; font-size: 0.9rem; }
+            canvas { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Wireless Communications</h1>
+        <div class="subtitle">Lecture 1: Signals, Channels & Detection</div>
+    </div>
+    <div style="font-size: 0.8rem; text-align: right;">SSY135<br>Interactive Lab</div>
+</header>
+
+<nav class="tab-nav">
+    <button class="tab-btn active" id="btn-signals" onclick="switchTab('signals')">1. Baseband/Passband</button>
+    <button class="tab-btn" id="btn-channel" onclick="switchTab('channel')">2. The Channel (Convolution)</button>
+    <button class="tab-btn" id="btn-modulation" onclick="switchTab('modulation')">3. Modulation & Noise</button>
+    <button class="tab-btn" id="btn-diversity" onclick="switchTab('diversity')">4. Diversity</button>
+</nav>
+
+<div class="container">
+
+    <div id="signals" class="tab-content active">
+        <h3>From Bits to Waves</h3>
+        <p>Wireless systems transmit complex baseband signals $u(t)$ by modulating a high-frequency carrier $f_c$. Observe how the envelope shapes the carrier.</p>
+        
+        <div class="interactive-grid">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Carrier Frequency ($f_c$) <span id="val-fc" class="value-display">5 Hz</span></label>
+                    <input type="range" id="slider-fc" min="1" max="20" step="1" value="5" data-unit=" Hz">
+                </div>
+                <div class="control-group">
+                    <label>Baseband Shape</label>
+                    <select id="sel-shape">
+                        <option value="rect">Rectangular Pulse</option>
+                        <option value="sinc">Sinc Pulse (Bandlimited)</option>
+                        <option value="tri">Triangle</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Zoom (Time Scale)</label>
+                    <input type="range" id="slider-zoom" min="1" max="5" step="0.1" value="2">
+                </div>
+                <button class="action-btn reset-btn" onclick="resetSignals()">Reset Defaults</button>
+                
+                <div class="theory-toggle" onclick="toggleTheory('theory-sig')">Show Theory</div>
+                <div id="theory-sig" class="theory-box">
+                    <strong>Passband Equation:</strong><br>
+                    s(t) = Re{ u(t) * e^(j 2π f_c t) }<br>
+                    s(t) = I(t)cos(2π f_c t) - Q(t)sin(2π f_c t)<br><br>
+                    u(t) is the "slow" envelope.<br>
+                    [cite_start]f_c is the "fast" carrier[cite: 152].
+                </div>
+            </div>
+            
+            <div class="viz-area">
+                <canvas id="canvas-sig"></canvas>
+                <div class="legend">
+                    <span><span class="dot" style="background:#e74c3c"></span>Envelope |u(t)|</span>
+                    <span><span class="dot" style="background:#3498db"></span>Passband s(t)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="channel" class="tab-content">
+        <h3>The Dispersive Channel</h3>
+        <p>In wireless, signals take multiple paths (Multipath). This creates echoes, modeled as a convolution. Adjust the channel taps to see Inter-Symbol Interference (ISI).</p>
+        
+        <div class="interactive-grid">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Input Sequence x[n]</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="checkbox" id="bit0" checked>
+                        <input type="checkbox" id="bit1">
+                        <input type="checkbox" id="bit2" checked>
+                        <input type="checkbox" id="bit3">
+                        <input type="checkbox" id="bit4">
+                    </div>
+                    <div class="note">Check boxes to send '1's at different times.</div>
+                </div>
+                
+                <hr style="border:0; border-top:1px solid #eee; margin: 1rem 0;">
+                
+                <div class="control-group">
+                    <label>Channel Tap 0 (Line of Sight) <span id="val-h0" class="value-display">1.0</span></label>
+                    <input type="range" id="slider-h0" min="-1" max="1" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label>Channel Tap 1 (Delay 1) <span id="val-h1" class="value-display">0.5</span></label>
+                    <input type="range" id="slider-h1" min="-1" max="1" step="0.1" value="0.5">
+                </div>
+                <div class="control-group">
+                    <label>Channel Tap 2 (Delay 2) <span id="val-h2" class="value-display">0.2</span></label>
+                    <input type="range" id="slider-h2" min="-1" max="1" step="0.1" value="0.2">
+                </div>
+                
+                <button class="action-btn reset-btn" onclick="resetChannel()">Reset Defaults</button>
+                
+                <div class="theory-toggle" onclick="toggleTheory('theory-chan')">Show Theory</div>
+                <div id="theory-chan" class="theory-box">
+                    <strong>Discrete Convolution:</strong><br>
+                    y[n] = Σ h[k] * x[n-k]<br><br>
+                    [cite_start]The output at time n is a weighted sum of current and past inputs[cite: 80].<br>
+                    Non-zero h[k] for k>0 causes ISI.
+                </div>
+            </div>
+            
+            <div class="viz-area">
+                <canvas id="canvas-chan"></canvas>
+                <div class="legend">
+                    <span><span class="dot" style="background:#2c3e50"></span>Input x[n]</span>
+                    <span><span class="dot" style="background:#27ae60"></span>Channel h[k]</span>
+                    <span><span class="dot" style="background:#e67e22"></span>Output y[n]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modulation" class="tab-content">
+        <h3>Noise & Decision Regions</h3>
+        <p>Digital symbols are transmitted as points in the complex plane (Constellation). Noise scatters these points. If noise pushes a point across a boundary, a symbol error occurs.</p>
+        
+        <div class="interactive-grid">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Modulation Scheme</label>
+                    <select id="sel-mod">
+                        <option value="bpsk">BPSK (1 bit/sym)</option>
+                        <option value="qpsk" selected>QPSK (2 bits/sym)</option>
+                        <option value="16qam">16-QAM (4 bits/sym)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Signal-to-Noise Ratio (dB) <span id="val-snr" class="value-display">10 dB</span></label>
+                    <input type="range" id="slider-snr" min="-5" max="25" step="0.5" value="10" data-unit=" dB">
+                </div>
+                
+                <div class="control-group" style="background:#ecf0f1; padding:0.5rem; border-radius:4px;">
+                    <label>Statistics</label>
+                    <div>Theoretical SER: <strong id="stat-theo">0.00%</strong></div>
+                    <div>Simulated SER: <strong id="stat-sim">0.00%</strong></div>
+                    <div class="note">Based on 1000 random symbols</div>
+                </div>
+
+                <button class="action-btn" onclick="drawConstellation()">Resimulate Noise</button>
+                
+                <div class="theory-toggle" onclick="toggleTheory('theory-mod')">Show Theory</div>
+                <div id="theory-mod" class="theory-box">
+                    <strong>Received Signal:</strong><br>
+                    r = s + n,  n ~ CN(0, N_0)<br>
+                    <strong>ML Detection:</strong><br>
+                    [cite_start]Choose s_i that minimizes |r - s_i|^2 [cite: 327]<br>
+                    <strong>Error Prob (QPSK):</strong><br>
+                    P_e ≈ 2Q(√(E_s/N_0))
+                </div>
+            </div>
+            
+            <div class="viz-area">
+                <canvas id="canvas-mod"></canvas>
+                <div class="legend">
+                    <span><span class="dot" style="background:#3498db"></span>Rx Symbol</span>
+                    <span><span class="dot" style="background:#c0392b"></span>Error</span>
+                    <span><span class="dot" style="background:#000"></span>Tx Ref</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="diversity" class="tab-content">
+        <h3>Diversity Combining</h3>
+        <p>Receiving the signal on multiple antennas (branches) improves reliability. Maximum Ratio Combining (MRC/ML) sums the SNRs of individual branches.</p>
+        
+        <div class="interactive-grid">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Branch 1 Gain |a1| <span id="val-a1" class="value-display">1.0</span></label>
+                    <input type="range" id="slider-a1" min="0" max="2" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label>Branch 2 Gain |a2| <span id="val-a2" class="value-display">0.5</span></label>
+                    <input type="range" id="slider-a2" min="0" max="2" step="0.1" value="0.5">
+                </div>
+                <div class="control-group">
+                    <label>Noise Power (N0) <span id="val-n0" class="value-display">0.5</span></label>
+                    <input type="range" id="slider-n0" min="0.1" max="2.0" step="0.1" value="0.5">
+                </div>
+                
+                <button class="action-btn reset-btn" onclick="resetDiversity()">Reset Defaults</button>
+
+                <div class="theory-toggle" onclick="toggleTheory('theory-div')">Show Theory</div>
+                <div id="theory-div" class="theory-box">
+                    <strong>Instantaneous SNR:</strong><br>
+                    γ_i = |a_i|^2 / N_0<br><br>
+                    <strong>Combined SNR (MRC):</strong><br>
+                    [cite_start]γ_sum = γ_1 + γ_2 [cite: 434]<br><br>
+                    Total SNR is the sum of individual SNRs.
+                </div>
+            </div>
+            
+            <div class="viz-area">
+                <canvas id="canvas-div"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div style="max-width:1000px; margin: 3rem auto; padding: 1rem; border-top: 1px solid #ccc; color:#555; font-size:0.9rem;">
+    <h4>Instructor Notes</h4>
+    <ul>
+        <li><strong>Usage Tip:</strong> Use Tab 1 to visually debunk the myth that "digital signals are square waves." Zoom in to show the carrier oscillation.</li>
+        <li><strong>Usage Tip:</strong> In Tab 2, set taps to [1, 0, 1] to show a clear echo. Then switch the input pattern to [1, 1, 1] to demonstrate how the echo interferes with the next symbol (ISI).</li>
+        <li><strong>Usage Tip:</strong> Tab 3 shows the "cliff effect." Slowly lower SNR from 15dB to 8dB for QPSK to show how errors appear suddenly, not linearly.</li>
+    </ul>
+</div>
+
+<script>
+    // --- GLOBAL STATE ---
+    let currentTabId = 'signals';
+
+    // --- TAB LOGIC ---
+    function switchTab(tabId) {
+        currentTabId = tabId;
+        
+        // Update Content Visibility
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        const content = document.getElementById(tabId);
+        if(content) content.classList.add('active');
+        
+        // Update Button States
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById('btn-' + tabId);
+        if(activeBtn) activeBtn.classList.add('active');
+        
+        // Trigger Redraw
+        redrawCurrent();
+    }
+
+    function redrawCurrent() {
+        if(currentTabId === 'signals') drawSignals();
+        else if(currentTabId === 'channel') drawChannel();
+        else if(currentTabId === 'modulation') drawConstellation();
+        else if(currentTabId === 'diversity') drawDiversity();
+    }
+
+    // Handle Window Resize Robustly
+    window.addEventListener('resize', redrawCurrent);
+
+    // --- HELPERS ---
+    function toggleTheory(id) {
+        const el = document.getElementById(id);
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function setupSlider(id, callback) {
+        const slider = document.getElementById(id);
+        const disp = document.getElementById(id.replace('slider', 'val'));
+        if(slider) {
+            slider.addEventListener('input', () => {
+                if(disp) disp.textContent = slider.value + (slider.getAttribute('data-unit') || '');
+                callback();
+            });
+        }
+    }
+
+    // --- TAB 1: SIGNALS ---
+    const ctxSig = document.getElementById('canvas-sig').getContext('2d');
+    
+    setupSlider('slider-fc', drawSignals);
+    setupSlider('slider-zoom', drawSignals);
+    document.getElementById('sel-shape').addEventListener('change', drawSignals);
+    
+    function resetSignals() {
+        document.getElementById('slider-fc').value = 5;
+        document.getElementById('sel-shape').value = 'rect';
+        document.getElementById('slider-zoom').value = 2;
+        // Update labels
+        document.getElementById('val-fc').textContent = '5 Hz';
+        drawSignals();
+    }
+
+    function drawSignals() {
+        // Fix Canvas DPI/Size
+        const canvas = ctxSig.canvas;
+        const parent = canvas.parentElement;
+        canvas.width = parent.offsetWidth;
+        canvas.height = 400; // Fixed height
+        const w = canvas.width;
+        const h = canvas.height;
+        
+        const fc = parseFloat(document.getElementById('slider-fc').value);
+        const shape = document.getElementById('sel-shape').value;
+        const zoom = parseFloat(document.getElementById('slider-zoom').value);
+        
+        ctxSig.clearRect(0,0,w,h);
+        
+        const tMax = 2.0 / zoom; 
+        const points = 800;
+        const topH = h/2.2;
+        const botY = h/1.9;
+        const botH = h/2.2;
+        
+        drawAxes(ctxSig, 0, topH, w, topH, tMax, "Time (t)", "u(t) Real");
+        drawAxes(ctxSig, 0, h, w, botH, tMax, "Time (t)", "s(t)");
+
+        const tArr = [], uArr = [], sArr = [];
+        
+        for(let i=0; i<=points; i++) {
+            let t = (i/points) * tMax;
+            let u = 0;
+            // Center pulse at t = 0.5/zoom
+            let center = 0.5/zoom;
+            let width = 0.2/zoom; 
+            
+            if (shape === 'rect') {
+                u = (Math.abs(t - center) < width) ? 1 : 0;
+            } else if (shape === 'tri') {
+                u = Math.max(0, 1 - Math.abs(t - center)/width);
+            } else if (shape === 'sinc') {
+                // Avoid divide by zero
+                let x = (t - center) * 20 * zoom;
+                u = (Math.abs(x) < 0.001) ? 1 : Math.sin(x)/x;
+            }
+            
+            let s = u * Math.cos(2 * Math.PI * fc * t);
+            
+            tArr.push(t);
+            uArr.push(u);
+            sArr.push(s);
+        }
+        
+        drawCurve(ctxSig, tArr, uArr, w, topH, tMax, 1.2, "#e74c3c", 2, 0);
+        drawCurve(ctxSig, tArr, sArr, w, botH, tMax, 1.2, "#3498db", 1.5, botY);
+        
+        ctxSig.setLineDash([5, 5]);
+        drawCurve(ctxSig, tArr, uArr, w, botH, tMax, 1.2, "#e74c3c", 1, botY);
+        ctxSig.setLineDash([]);
+    }
+
+    // --- TAB 2: CHANNEL ---
+    const ctxChan = document.getElementById('canvas-chan').getContext('2d');
+    
+    setupSlider('slider-h0', drawChannel);
+    setupSlider('slider-h1', drawChannel);
+    setupSlider('slider-h2', drawChannel);
+    ['bit0','bit1','bit2','bit3','bit4'].forEach(id => {
+        document.getElementById(id).addEventListener('change', drawChannel);
+    });
+
+    function resetChannel() {
+        document.getElementById('slider-h0').value = 1.0; document.getElementById('val-h0').textContent = '1.0';
+        document.getElementById('slider-h1').value = 0.5; document.getElementById('val-h1').textContent = '0.5';
+        document.getElementById('slider-h2').value = 0.2; document.getElementById('val-h2').textContent = '0.2';
+        drawChannel();
+    }
+
+    function drawChannel() {
+        const canvas = ctxChan.canvas;
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = 400;
+        const w = canvas.width;
+        const h = canvas.height;
+        
+        const h_taps = [
+            parseFloat(document.getElementById('slider-h0').value),
+            parseFloat(document.getElementById('slider-h1').value),
+            parseFloat(document.getElementById('slider-h2').value)
+        ];
+        
+        const x_in = [0,0,0,0,0];
+        ['bit0','bit1','bit2','bit3','bit4'].forEach((id, idx) => {
+            if(document.getElementById(id).checked) x_in[idx] = 1;
+        });
+
+        // Convolution y[n] = sum(h[k]*x[n-k])
+        // Output length = len(x) + len(h) - 1
+        const y_out = new Array(x_in.length + h_taps.length - 1).fill(0);
+        for(let n=0; n<y_out.length; n++) {
+            for(let k=0; k<h_taps.length; k++) {
+                if(n-k >= 0 && n-k < x_in.length) {
+                    y_out[n] += h_taps[k] * x_in[n-k];
+                }
+            }
+        }
+
+        ctxChan.clearRect(0,0,w,h);
+        const rowH = h/3.5;
+        const pad = 30;
+        
+        drawStems(ctxChan, x_in, "Input x[n]", 20, "#2c3e50", 1.5, w, rowH);
+        drawStems(ctxChan, h_taps, "Channel h[k]", 20 + rowH + pad, "#27ae60", 1.2, w, rowH);
+        drawStems(ctxChan, y_out, "Output y[n]", 20 + 2*(rowH+pad), "#e67e22", 3.0, w, rowH);
+    }
+
+    function drawStems(ctx, data, label, yOff, color, maxVal, w, rowH) {
+        ctx.fillStyle = "#333";
+        ctx.font = "14px sans-serif";
+        ctx.fillText(label, 10, yOff + 20);
+        
+        const originY = yOff + rowH/2;
+        ctx.beginPath();
+        ctx.moveTo(40, originY);
+        ctx.lineTo(w-10, originY);
+        ctx.strokeStyle = "#ccc";
+        ctx.stroke();
+        
+        // Prevent squashing if data is short
+        const effectiveLen = Math.max(data.length, 6);
+        const step = (w - 60) / effectiveLen;
+        
+        data.forEach((val, i) => {
+            const px = 60 + i*step;
+            const py = originY - (val/maxVal) * (rowH/2.5);
+            
+            ctx.beginPath();
+            ctx.moveTo(px, originY);
+            ctx.lineTo(px, py);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI*2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            
+            ctx.fillStyle = "#7f8c8d";
+            ctx.font = "10px sans-serif";
+            ctx.fillText(i, px-3, originY + 15);
+        });
+    }
+
+    // --- TAB 3: MODULATION ---
+    const ctxMod = document.getElementById('canvas-mod').getContext('2d');
+    setupSlider('slider-snr', () => {
+        document.getElementById('val-snr').innerText = document.getElementById('slider-snr').value + " dB";
+        drawConstellation();
+    });
+    document.getElementById('sel-mod').addEventListener('change', drawConstellation);
+
+    function getConstellationPoints(type) {
+        if(type === 'bpsk') return [{r:-1, i:0}, {r:1, i:0}];
+        if(type === 'qpsk') return [{r:0.707, i:0.707}, {r:-0.707, i:0.707}, {r:-0.707, i:-0.707}, {r:0.707, i:-0.707}];
+        if(type === '16qam') {
+            const pts = [];
+            // Normalized levels for Es=1: +/- 1/sqrt(3.16) and +/- 3/sqrt(3.16)
+            // 3.16 ~= sqrt(10)
+            // Levels: +/- 0.316, +/- 0.948
+            const lev = [-0.9486, -0.3162, 0.3162, 0.9486]; 
+            for(let x of lev) for(let y of lev) pts.push({r:x, i:y});
+            return pts;
+        }
+        return [];
+    }
+    
+    // Gaussian Generator (Box-Muller)
+    function randn() {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random();
+        while(v === 0) v = Math.random();
+        return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+    }
+
+    // Error Function Approx for Theory Curve
+    function Q(x) {
+        // Simple approx: (1 / (x * sqrt(2pi))) * exp(-x^2/2) is loose for small x
+        // Better: Polyfill or Abramowitz/Stegun
+        if (x < 0) return 1 - Q(-x);
+        // A&S formula 7.1.26
+        const a1 =  0.254829592;
+        const a2 = -0.284496736;
+        const a3 =  1.421413741;
+        const a4 = -1.453152027;
+        const a5 =  1.061405429;
+        const p  =  0.3275911;
+        const t = 1.0/(1.0 + p*x);
+        const y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*Math.exp(-x*x);
+        return 0.5 * (1 - y); // Q(x) = 0.5 * erfc(x/sqrt(2)) -> this is erf approx
+    }
+    // Correction: Q(x) = 0.5*erfc(x/sqrt(2)). 
+    // The approx above is for erf(x). erf = 1 - y. 
+    // Q(x) = 0.5 * (1 - erf(x/sqrt(2))).
+    function Q_func(x) {
+    return 0.5 * erfc_approx(x / Math.sqrt(2));
+}
+function erfc_approx(x) {
+    const z = Math.abs(x);
+    const t = 1 / (1 + z / 2);
+    const r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+    return x >= 0 ? r : 2 - r;
+}
+    function drawConstellation() {
+        const canvas = ctxMod.canvas;
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = 400;
+        const w = canvas.width;
+        const h = canvas.height;
+        ctxMod.clearRect(0,0,w,h);
+        
+        const modType = document.getElementById('sel-mod').value;
+        const snrDb = parseFloat(document.getElementById('slider-snr').value);
+        const snrLin = Math.pow(10, snrDb/10);
+        // Es = 1 assumed. SNR = Es/N0 => N0 = 1/SNR.
+        const N0 = 1 / snrLin; 
+        const sigma = Math.sqrt(N0/2); // per dimension
+        
+        const centers = getConstellationPoints(modType);
+        const scale = Math.min(w,h) / 3.5;
+        const cx = w/2; 
+        const cy = h/2;
+
+        // Draw Axes
+        ctxMod.beginPath(); ctxMod.strokeStyle="#eee";
+        ctxMod.moveTo(cx, 0); ctxMod.lineTo(cx, h);
+        ctxMod.moveTo(0, cy); ctxMod.lineTo(w, cy);
+        ctxMod.stroke();
+
+        // Draw Reference Points
+        centers.forEach(p => {
+            ctxMod.beginPath();
+            ctxMod.arc(cx + p.r*scale, cy - p.i*scale, 6, 0, Math.PI*2);
+            ctxMod.fillStyle = "#000";
+            ctxMod.fill();
+            // Draw regions (simplified)
+            ctxMod.strokeStyle = "rgba(0,0,0,0.1)";
+            ctxMod.strokeRect(cx + (p.r-0.5)*scale, cy - (p.i+0.5)*scale, scale, scale);
+        });
+
+        // Simulate
+        let errors = 0;
+        const numSym = 1000;
+        
+        for(let k=0; k<numSym; k++) {
+            const sIdx = Math.floor(Math.random() * centers.length);
+            const s = centers[sIdx];
+            
+            const nr = randn() * sigma;
+            const ni = randn() * sigma;
+            const r = { r: s.r + nr, i: s.i + ni };
+            
+            // Detection (ML)
+            let minDist = Infinity;
+            let detIdx = -1;
+            for(let i=0; i<centers.length; i++) {
+                const c = centers[i];
+                const d = (r.r - c.r)**2 + (r.i - c.i)**2;
+                if(d < minDist) { minDist = d; detIdx = i; }
+            }
+            
+            const isError = (detIdx !== sIdx);
+            if(isError) errors++;
+            
+            // Draw subset of points to avoid clutter
+            if(k < 300) {
+                ctxMod.beginPath();
+                ctxMod.arc(cx + r.r*scale, cy - r.i*scale, 2, 0, Math.PI*2);
+                ctxMod.fillStyle = isError ? "#c0392b" : "rgba(52, 152, 219, 0.6)";
+                ctxMod.fill();
+            }
+        }
+
+        const serSim = errors / numSym;
+        document.getElementById('stat-sim').innerText = (serSim*100).toFixed(2) + "%";
+        
+        // Theoretical
+        let serTheo = 0;
+        if(modType === 'bpsk') serTheo = Q_func(Math.sqrt(2*snrLin));
+        else if(modType === 'qpsk') serTheo = 2*Q_func(Math.sqrt(snrLin));
+        else if(modType === '16qam') serTheo = 3*Q_func(Math.sqrt(snrLin/5)); // Nearest Neighbor approx
+
+        if(serTheo > 1) serTheo = 1;
+        document.getElementById('stat-theo').innerText = (serTheo*100).toFixed(3) + "%";
+    }
+
+    // --- TAB 4: DIVERSITY ---
+    const ctxDiv = document.getElementById('canvas-div').getContext('2d');
+    setupSlider('slider-a1', drawDiversity);
+    setupSlider('slider-a2', drawDiversity);
+    setupSlider('slider-n0', drawDiversity);
+    
+    function resetDiversity() {
+        document.getElementById('slider-a1').value = 1.0; document.getElementById('val-a1').textContent = '1.0';
+        document.getElementById('slider-a2').value = 0.5; document.getElementById('val-a2').textContent = '0.5';
+        document.getElementById('slider-n0').value = 0.5; document.getElementById('val-n0').textContent = '0.5';
+        drawDiversity();
+    }
+
+    function drawDiversity() {
+        const canvas = ctxDiv.canvas;
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = 400;
+        const w = canvas.width;
+        const h = canvas.height;
+        ctxDiv.clearRect(0,0,w,h);
+        
+        const a1 = parseFloat(document.getElementById('slider-a1').value);
+        const a2 = parseFloat(document.getElementById('slider-a2').value);
+        let n0 = parseFloat(document.getElementById('slider-n0').value);
+        if(n0 < 0.1) n0 = 0.1; // Safety clamp
+        
+        const snr1 = (a1*a1) / n0;
+        const snr2 = (a2*a2) / n0;
+        const snrComb = snr1 + snr2;
+        
+        const maxVal = 10; 
+        const barW = w / 5;
+        const originY = h - 40;
+        
+        drawBar(ctxDiv, 0, snr1, "Branch 1", "#7f8c8d", maxVal, barW, h, originY, w);
+        drawBar(ctxDiv, 1, snr2, "Branch 2", "#7f8c8d", maxVal, barW, h, originY, w);
+        drawBar(ctxDiv, 2, snrComb, "Combined", "#27ae60", maxVal, barW, h, originY, w);
+        
+        ctxDiv.beginPath();
+        ctxDiv.moveTo(20, originY);
+        ctxDiv.lineTo(w-20, originY);
+        ctxDiv.strokeStyle = "#333";
+        ctxDiv.stroke();
+    }
+
+    function drawBar(ctx, idx, val, label, color, maxVal, barW, h, originY, w) {
+        const px = (idx+1) * (w/4) - barW/2;
+        const clampedVal = Math.min(val, maxVal);
+        const bH = (clampedVal / maxVal) * (h - 80);
+        const py = originY - bH;
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(px, py, barW, bH);
+        
+        // Label
+        ctx.fillStyle = "#333";
+        ctx.font = "bold 14px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(label, px + barW/2, originY + 20);
+        
+        // Value
+        ctx.fillStyle = "#555";
+        ctx.font = "12px sans-serif";
+        ctx.fillText(val.toFixed(2), px + barW/2, py - 5);
+        
+        // Overflow indicator
+        if(val > maxVal) {
+            ctx.fillStyle = "red";
+            ctx.fillText("↑", px + barW/2, py + 15);
+        }
+    }
+
+    function drawAxes(ctx, x, y, w, h, xMax, xLab, yLab) {
+        ctx.strokeStyle = "#ddd";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); 
+        ctx.moveTo(x, y + h/2); 
+        ctx.lineTo(x+w, y + h/2); 
+        ctx.stroke();
+        
+        ctx.fillStyle = "#666";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(xLab, x+w-5, y+h/2 - 5);
+        ctx.textAlign = "left";
+        ctx.fillText(yLab, x+5, y+15);
+    }
+    
+    function drawCurve(ctx, xArr, yArr, w, h, xMax, yMax, color, width, yOffset) {
+        ctx.beginPath();
+        const originY = yOffset + h/2;
+        for(let i=0; i<xArr.length; i++) {
+            const px = (xArr[i]/xMax) * w;
+            const py = originY - (yArr[i]/yMax) * (h/2);
+            if(i===0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+    }
+
+    // Init
+    switchTab('signals');
+</script>
+</body>
+</html>
