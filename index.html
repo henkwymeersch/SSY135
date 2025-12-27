@@ -5,49 +5,305 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wireless Communications – Interactive Lectures</title>
   <style>
-    :root { color-scheme: light; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.4; }
-    header { padding: 24px 16px; max-width: 900px; margin: 0 auto; }
-    main { padding: 0 16px 32px; max-width: 900px; margin: 0 auto; }
-    h1 { font-size: 1.6rem; margin: 0 0 8px; }
-    p { margin: 0 0 12px; color: #333; }
-    .card { border: 1px solid #ddd; border-radius: 14px; padding: 14px; margin: 12px 0; }
-    .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
-    @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
-    a { color: inherit; text-decoration: none; }
-    .lecture-title { font-weight: 650; margin-bottom: 6px; }
-    .meta { font-size: 0.95rem; color: #555; }
-    .footer { font-size: 0.9rem; color: #666; margin-top: 20px; }
-    .pill { display: inline-block; padding: 3px 10px; border: 1px solid #ddd; border-radius: 999px; font-size: 0.85rem; color: #444; }
+    :root {
+      color-scheme: light;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+    }
+    
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      min-height: 100vh;
+    }
+    
+    header {
+      padding: 32px 20px;
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    
+    h1 {
+      font-size: 2.25rem;
+      margin: 0 0 12px;
+      background: linear-gradient(to right, var(--primary), #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 800;
+    }
+    
+    .subtitle {
+      font-size: 1.25rem;
+      color: var(--gray-700);
+      margin: 0 0 24px;
+      max-width: 800px;
+    }
+    
+    .badges {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 999px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--gray-800);
+    }
+    
+    .badge::before {
+      content: '✓';
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    main {
+      padding: 40px 20px;
+    }
+    
+    .lecture-grid {
+      display: grid;
+      gap: 24px;
+      grid-template-columns: 1fr;
+    }
+    
+    @media (min-width: 768px) {
+      .lecture-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (min-width: 1024px) {
+      .lecture-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    .lecture-card {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 24px;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      transition: all 0.2s ease;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .lecture-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+      border-color: var(--primary);
+    }
+    
+    .lecture-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(to right, var(--primary), #7c3aed);
+    }
+    
+    .lecture-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: var(--gray-100);
+      border-radius: 10px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+      font-size: 0.875rem;
+    }
+    
+    .lecture-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0 0 12px;
+      color: var(--gray-800);
+      line-height: 1.4;
+    }
+    
+    .lecture-desc {
+      font-size: 0.95rem;
+      color: var(--gray-700);
+      margin: 0;
+      line-height: 1.5;
+    }
+    
+    .footer {
+      margin-top: 60px;
+      padding: 24px;
+      background: white;
+      border-radius: 16px;
+      border: 1px solid var(--gray-200);
+      text-align: center;
+    }
+    
+    .footer p {
+      margin: 0;
+      color: var(--gray-700);
+      font-size: 0.95rem;
+    }
+    
+    .footer strong {
+      color: var(--gray-800);
+    }
+    
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: block;
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--gray-700);
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Wireless Communications – Interactive Lectures</h1>
-    <p>Public interactive pages that accompany the course lectures. These pages are self-contained and run in any modern browser.</p>
-    <p><span class="pill">Mobile-friendly</span> <span class="pill">No login</span> <span class="pill">Offline-capable</span></p>
+    <div class="container">
+      <h1>Wireless Communications – Interactive Lectures</h1>
+      <p class="subtitle">Public interactive pages that accompany the SSY135 course lectures. These pages are self-contained and run in any modern browser.</p>
+      
+      <div class="badges">
+        <span class="badge">Mobile-friendly</span>
+        <span class="badge">No login required</span>
+        <span class="badge">Offline-capable</span>
+        <span class="badge">Interactive demos</span>
+        <span class="badge">Instant feedback</span>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <div class="grid">
-      <a class="card" href="lectures/lecture1.html">
-        <div class="lecture-title">Lecture 1 — (Title)</div>
-        <div class="meta">Short description (e.g., link budget, SNR, basic channel models).</div>
+  <main class="container">
+    <div class="lecture-grid">
+      <a class="lecture-card" href="lectures/lec01.html">
+        <div class="lecture-number">01</div>
+        <h3 class="lecture-title">Introduction to the Course</h3>
+        <p class="lecture-desc">Course overview, wireless communication fundamentals, and interactive tools introduction.</p>
       </a>
 
-      <a class="card" href="lectures/lecture2.html">
-        <div class="lecture-title">Lecture 2 — (Title)</div>
-        <div class="meta">Short description (e.g., fading, outage probability, diversity intuition).</div>
+      <a class="lecture-card" href="lectures/lec02.html">
+        <div class="lecture-number">02</div>
+        <h3 class="lecture-title">Path Loss and Shadowing</h3>
+        <p class="lecture-desc">Large-scale propagation models, link budget analysis, and shadowing effects in wireless channels.</p>
       </a>
 
-      <a class="card" href="lectures/lecture2.html">
-        <div class="lecture-title">Lecture 3 — (Title)</div>
-        <div class="meta">Short description (e.g., path loss + shadowing + correlation).</div>
+      <a class="lecture-card" href="lectures/lec03.html">
+        <div class="lecture-number">03</div>
+        <h3 class="lecture-title">The Narrowband Wireless Channel</h3>
+        <p class="lecture-desc">Small-scale fading models, Rayleigh and Rician distributions, and narrowband channel characteristics.</p>
+      </a>
+
+      <a class="lecture-card" href="lectures/lec04.html">
+        <div class="lecture-number">04</div>
+        <h3 class="lecture-title">The Wideband Wireless Channel</h3>
+        <p class="lecture-desc">Delay spread, coherence bandwidth, frequency-selective fading, and wideband channel modeling.</p>
+      </a>
+
+      <a class="lecture-card" href="lectures/lec05.html">
+        <div class="lecture-number">05</div>
+        <h3 class="lecture-title">Performance and Diversity</h3>
+        <p class="lecture-desc">Error probability under fading, outage probability, and diversity techniques (time, frequency, space).</p>
+      </a>
+
+      <a class="lecture-card" href="lectures/lec06.html">
+        <div class="lecture-number">06</div>
+        <h3 class="lecture-title">OFDM</h3>
+        <p class="lecture-desc">Orthogonal Frequency Division Multiplexing principles, cyclic prefix, and OFDM system design.</p>
+      </a>
+
+      <a class="lecture-card" href="lectures/lec07.html">
+        <div class="lecture-number">07</div>
+        <h3 class="lecture-title">MIMO</h3>
+        <p class="lecture-desc">Multiple Input Multiple Output systems, spatial multiplexing, beamforming, and capacity analysis.</p>
+      </a>
+
+      <a class="lecture-card" href="lectures/lec08.html">
+        <div class="lecture-number">08</div>
+        <h3 class="lecture-title">Multi-user Communication and Adaptation</h3>
+        <p class="lecture-desc">Multiple access techniques, adaptive modulation, and multi-user MIMO systems.</p>
+      </a>
+
+      <a class="lecture-card" href="lectures/lec09.html">
+        <div class="lecture-number">09</div>
+        <h3 class="lecture-title">5G Communication</h3>
+        <p class="lecture-desc">Massive MIMO, mmWave communications, network slicing, and 5G NR physical layer.</p>
+      </a>
+
+      <a class="lecture-card" href="lectures/lec10.html">
+        <div class="lecture-number">10</div>
+        <h3 class="lecture-title">6G Communication</h3>
+        <p class="lecture-desc">Future trends, terahertz communications, AI-native networks, and integrated sensing & communication.</p>
       </a>
     </div>
 
     <div class="footer">
-      <p>Notes: This site contains no copyrighted slide material. References and attributions are included within each lecture page where applicable.</p>
+      <p><strong>Notes:</strong> This site contains no copyrighted slide material. References and attributions are included within each lecture page where applicable.</p>
+      <p>Interactive content is designed to enhance understanding of wireless communication concepts through visualization and experimentation.</p>
+      
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-number">10</span>
+          <span class="stat-label">Interactive Lectures</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">SSY135</span>
+          <span class="stat-label">Course Code</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">2025/26</span>
+          <span class="stat-label">Academic Year</span>
+        </div>
+      </div>
     </div>
   </main>
 </body>
